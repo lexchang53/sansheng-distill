@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Full legacy page validation plus live coverage and reviewed short apparatus.
+"""Full legacy page validation plus live coverage and reviewed short sources.
 
 This entry never signs reviews. An optional short-apparatus-review.json binds
 all six source/content inputs; only its individually approved, genuinely short
 non-primary sections may replace the legacy 800-character G9 requirement.
+An independently reviewed, source-short final author afterword may do so too.
 All other legacy/source/browser checks still run on the complete book.
 """
 from __future__ import annotations
@@ -155,6 +156,83 @@ def accepted_apparatus(directory, data, fresh_coverage, mapped):
     return accepted
 
 
+def accepted_primary_closure(directory, data, fresh_coverage, mapped):
+    """Allow a genuinely short final author afterword after explicit source review.
+
+    This keeps its primary classification and all coverage, quote, DOM and
+    browser gates. The review is bound to the same six current input files.
+    """
+    path = directory / "short-primary-review.json"
+    if not path.exists():
+        return []
+    receipt = read_json(path)
+    label = "short primary closure"
+    require(receipt.get("schema_version") == 1, f"{label}: invalid schema")
+    require(receipt.get("input_sha256") == input_hashes(directory),
+            f"{label}: reviewed input hashes are stale or incomplete")
+    require(fresh_coverage.get("release_ready") is True,
+            f"{label}: current source/semantic coverage is not approved")
+    entries = indexed(receipt.get("entries"), "no", f"{label} reviews")
+    configured, chapters, original, units = mapped
+    effective_ids = [row["id"] for row in data["source-map.json"]["chapters"]
+                     if row.get("kind") == "effective"]
+    accepted = []
+    for no, review in entries.items():
+        require(type(no) is int and no in configured, f"{label}: unknown chapter")
+        cfg, chapter = configured[no], chapters[no]
+        cid = cfg["source_chapter_id"]
+        source_chapter = original[cid]
+        require(review.get("source_chapter_id") == cid,
+                f"{label}: chapter mismatch")
+        require(review.get("decision") == "approved" and
+                nonempty_text(review.get("reviewer")) and
+                nonempty_text(review.get("rationale")) and
+                nonempty_text(review.get("source_claims_checked")) and
+                nonempty_text(review.get("why_800_would_inflate")),
+                f"{label}: explicit claim-by-claim manual review required")
+        require(cfg.get("source_role") == "primary" and
+                source_chapter.get("source_scope") == "primary" and
+                source_chapter.get("kind") == "effective" and
+                source_chapter.get("title", "").strip() == "后记" and
+                cid == effective_ids[-1],
+                f"{label}: only the final primary author afterword qualifies")
+        source_review = source_chapter.get("classification_review", {})
+        require(source_review.get("decision") == "approved" and
+                nonempty_text(source_review.get("reviewer")) and
+                nonempty_text(source_review.get("rationale")),
+                f"{label}: source classification has not been reviewed")
+        start, end = source_chapter.get("start"), source_chapter.get("end")
+        text = data["book.txt"]
+        require(type(start) is int and type(end) is int and
+                0 <= start < end <= len(text), f"{label}: invalid source span")
+        actual = text[start:end]
+        source_length = len(re.sub(r"\s", "", actual))
+        require(nonempty_text(actual) and 0 < source_length < 800,
+                f"{label}: source is empty, punctuation only, or not short")
+        body = chapter.get("narrative", "")
+        body_length = len(re.sub(r"\s", "", body))
+        require(nonempty_text(body) and 0 < body_length < 800,
+                f"{label}: narrative is empty or does not need this exception")
+        items = [item for item in data["content-ledger.json"]["items"]
+                 if item.get("chapter") == cid]
+        require(items and all(item.get("status") == "covered" for item in items),
+                f"{label}: every knowledge obligation must be fully covered")
+        ids = review.get("knowledge_item_ids")
+        require(isinstance(ids, list) and len(ids) == len(set(ids)) and
+                set(ids) == {item["id"] for item in items},
+                f"{label}: reviewed knowledge set mismatch")
+        for item in items:
+            require(item.get("target_ids") and all(
+                uid in cfg["deepread_unit_ids"] and units[uid].get("chapter") == cid
+                for uid in item["target_ids"]),
+                f"{label}: foreign or missing target")
+        accepted.append({"no": no, "source_chapter_id": cid,
+                         "source_chars": source_length,
+                         "narrative_chars": body_length,
+                         "knowledge_items": len(items), "reviewer": review["reviewer"]})
+    return accepted
+
+
 def dom_errors(html, mapped):
     from bs4 import BeautifulSoup
     soup = BeautifulSoup(html, "html.parser")
@@ -204,16 +282,17 @@ def audit(directory, interact=True, screenshot=None):
     coverage = COVERAGE.audit_book(directory)
     if coverage.get("release_ready") is not True:
         errors.append("[high-retention] freshly recomputed coverage is not approved")
-    accepted = []
+    accepted, accepted_closures = [], []
     try:
         mapped = mapping(config, distill, data["source-map.json"], data["deepread.json"])
         errors += dom_errors(html, mapped)
         accepted = accepted_apparatus(directory, data, coverage, mapped)
+        accepted_closures = accepted_primary_closure(directory, data, coverage, mapped)
     except (ValueError, KeyError, TypeError) as exc:
         errors.append(f"[high-retention] {exc}")
     # Exact, chapter-specific G9 messages only. Never remove any other violation.
     permitted = {f'[distill] 第{x["no"]}章 narrative {x["narrative_chars"]} 字 < 800(G9 详实度)'
-                 for x in accepted}
+                 for x in accepted + accepted_closures}
     errors = [error for error in errors if error not in permitted]
     if interact:
         evidence = enrich.get("evidence_page", {}).get("claims", {})
@@ -221,6 +300,7 @@ def audit(directory, interact=True, screenshot=None):
     return {"schema_version": 1, "passed": not errors,
             "browser_checked": interact, "input_sha256": input_hashes(directory),
             "coverage_recomputed": True, "accepted_short_apparatus": accepted,
+            "accepted_short_primary_closures": accepted_closures,
             "errors": errors, "scope": "Source/content/page checks only; not website deployment or a substitute for visual and semantic review."}
 
 

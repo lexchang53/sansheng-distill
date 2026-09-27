@@ -176,6 +176,61 @@ class HighRetentionTests(unittest.TestCase):
         self.prepare()
         self.rejected("primary content cannot")
 
+    def primary_closure(self):
+        chapter = self.docs["source-map.json"]["chapters"][-1]
+        chapter["source_scope"] = "primary"
+        chapter["title"] = "后记"
+        self.docs["config.json"]["chapters"][-1]["source_role"] = "primary"
+        COVERAGE_FIXTURE.sign_fixture(self.docs)
+
+    def sign_primary_closure(self):
+        receipt = {"schema_version": 1, "input_sha256": AUDITOR.input_hashes(self.directory),
+                   "entries": [{"no": 2, "source_chapter_id": "c02", "decision": "approved",
+                                "reviewer": "invented-fixture-reviewer",
+                                "rationale": "Synthetic final author afterword reviewed against its source.",
+                                "source_claims_checked": "Both synthetic knowledge claims and source order checked.",
+                                "why_800_would_inflate": "The source has only 210 characters; repetition would be needed.",
+                                "knowledge_item_ids": [item["id"] for item in self.docs["content-ledger.json"]["items"]
+                                                       if item["chapter"] == "c02"]}]}
+        (self.directory / "short-primary-review.json").write_text(json.dumps(receipt))
+
+    def test_reviewed_short_primary_afterword_passes_exact_g9(self):
+        self.primary_closure()
+        self.prepare(receipt=False)
+        self.sign_primary_closure()
+        report = self.cli(0)
+        self.assertEqual([row["no"] for row in report["accepted_short_primary_closures"]], [2])
+        self.assertEqual(report["accepted_short_apparatus"], [])
+
+    def test_primary_afterword_without_review_keeps_g9_failure(self):
+        self.primary_closure()
+        self.prepare(receipt=False)
+        self.rejected("(G9 详实度)")
+
+    def test_ordinary_primary_chapter_cannot_use_afterword_receipt(self):
+        self.primary_closure()
+        self.docs["source-map.json"]["chapters"][-1]["title"] = "第二章 正文"
+        COVERAGE_FIXTURE.sign_fixture(self.docs)
+        self.prepare(receipt=False)
+        self.sign_primary_closure()
+        self.rejected("only the final primary author afterword qualifies")
+
+    def test_primary_afterword_requires_claim_review_and_complete_coverage(self):
+        self.primary_closure()
+        self.prepare(receipt=False)
+        self.sign_primary_closure()
+        path = self.directory / "short-primary-review.json"
+        receipt = json.loads(path.read_text())
+        receipt["entries"][0]["source_claims_checked"] = ""
+        path.write_text(json.dumps(receipt))
+        self.rejected("claim-by-claim manual review required")
+        item = self.docs["content-ledger.json"]["items"][-1]
+        item.update(status="partial", exclusion_reason="Synthetic missing detail.")
+        COVERAGE_FIXTURE.sign_fixture(self.docs)
+        self.sync()
+        self.sign_primary_closure()
+        self.rejected("every knowledge obligation must be fully covered")
+
     def test_changed_scope_invalidates_existing_receipt(self):
         self.prepare()
         self.docs["source-map.json"]["chapters"][-1]["source_scope"] = "primary"
