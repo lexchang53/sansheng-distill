@@ -229,6 +229,8 @@ Locator 应使用来源本身的定位体系：卷、篇、叶、页、行、条
 
 Observation 一条只承载一个可审计主张，并显式携带 `subject_id`、`id_namespace`、`source_id`、locator、certainty 与 statement kind。来源正面支持、来源内部解释、编者推断和未知状态不可揉成一句。
 
+Observation 的 statement 只记录该来源及其定位段能支持的内容；“原刊尚未找到”“影像待核”等取证进度写入来源覆盖或审阅记录，不写成来源事实。取得新版本或原页后，回查旧 Observation 与正文里这类临时措辞，保留原来源的说话人，同时更新取证状态和受影响的裁决。
+
 ## 5. MergeDecision：两次判断，exact-once
 
 每条 Observation 先经过 `observation_admission`：
