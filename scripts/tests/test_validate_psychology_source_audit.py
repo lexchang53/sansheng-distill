@@ -189,6 +189,32 @@ def test_source_audit_clean_passes_pure_and_file_layers(tmp_path):
     }) == []
 
 
+def test_explicit_reading_part_keeps_original_chapter_anchor_and_checks_source(tmp_path):
+    audit, source, distill, claim_map, enrich, _ = audit_fixture(tmp_path)
+    # The original chapter number can differ from the editorial reading-part
+    # number when a preface is included as part 1.
+    distill["core_ideas"][0]["anchor"] = "序言"
+    distill["core_ideas"][0]["source_chapter_no"] = 1
+    distill["decision_rules"][0]["anchor"] = "原书第1章"
+    distill["decision_rules"][0]["source_chapter_no"] = 2
+    distill["quotes"][0]["anchor"] = "序言"
+    distill["quotes"][0]["source_chapter_no"] = 1
+    assert _pure(audit, source, distill, claim_map, enrich) == []
+
+    distill["decision_rules"][0]["source_chapter_no"] = 1
+    errors = _pure(audit, source, distill, claim_map, enrich)
+    assert any("use-checklist" in error and "anchor" in error for error in errors)
+
+    distill["decision_rules"][0]["source_chapter_no"] = 0
+    errors = _pure(audit, source, distill, claim_map, enrich)
+    assert any("source_chapter_no 必须是正整数" in error for error in errors)
+
+    distill["decision_rules"][0]["source_chapter_no"] = 2
+    distill["quotes"][0]["source_chapter_no"] = 2
+    errors = _pure(audit, source, distill, claim_map, enrich)
+    assert any("quote" in error and "anchor" in error for error in errors)
+
+
 def test_source_audit_rejects_hash_and_line_count_drift(tmp_path):
     audit, source, distill, claim_map, enrich, _ = audit_fixture(tmp_path)
     actual_hashes = {role: audit["inputs"][role]["sha256"] for role in (

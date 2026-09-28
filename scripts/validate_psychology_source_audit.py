@@ -95,6 +95,22 @@ def _anchor_chapter(value: Any) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def _source_chapter(item: Mapping[str, Any], label: str, errors: list[str]) -> int | None:
+    """Prefer an explicit editorial reading-part number over an original-book anchor.
+
+    A book may place a preface before its numbered original chapters. In that
+    case ``原书第1章`` is still the right reader-facing anchor, while its
+    ``distill.chapters[].no`` and source-audit segment number are 2.
+    """
+    if "source_chapter_no" not in item:
+        return _anchor_chapter(item.get("anchor"))
+    chapter_no = item["source_chapter_no"]
+    if not _positive_int(chapter_no):
+        errors.append(_error(f"{label}.source_chapter_no 必须是正整数"))
+        return None
+    return chapter_no
+
+
 def _chapter_id(chapter_no: int) -> str:
     return f"ch{chapter_no:02d}"
 
@@ -166,7 +182,7 @@ def _extract_final_claims(distill: Any, errors: list[str]) -> dict[str, dict[str
                 "section": section,
                 "item": item,
                 "text": _claim_text(section, item),
-                "anchor_chapter": _anchor_chapter(item.get("anchor")),
+                "anchor_chapter": _source_chapter(item, label, errors),
             }
     return claims
 
@@ -553,7 +569,9 @@ def validate_source_audit_data(
             final_range = final_item.get("line_range")
             if _nonempty(final_range) and record.get("line_range") != final_range:
                 errors.append(_error(f"{label}.line_range 与最终 {kind}.line_range 不一致"))
-            expected_chapter = final_item.get("_chapter_no") or _anchor_chapter(final_item.get("anchor"))
+            expected_chapter = final_item.get("_chapter_no") or _source_chapter(
+                final_item, f"最终 {kind} {target_id}", errors
+            )
             if expected_chapter and segment_chapter != expected_chapter:
                 errors.append(_error(f"{label} 的来源章与最终 {kind}.anchor 不一致"))
 

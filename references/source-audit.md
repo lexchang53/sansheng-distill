@@ -50,9 +50,9 @@ source-audit.json
 
 `segments` 按原文顺序连续覆盖 `L000001` 至末行，不许空洞、重叠或越界。枚举：
 
-- `kind`: `frontmatter|chapter|backmatter`
+- `kind`: `acknowledgments|appendix|backmatter|chapter|conclusion|epilogue|front_matter|frontmatter|index|notes|part|preface|references`
 - `line_range`: 固定 `L000001-L000123`
-- `heading_excerpt`: 必须在该 segment 的**起始行**逐字命中
+- `heading_excerpt`: 必须在该 segment 起始 64 行内规范化命中
 - `kind="chapter"` 时：`chapter_no` 为正整数，`id` 固定为 `ch01/ch02/...`；并与
   `distill.chapters[].no` 一一对应
 - 非 chapter segment 不写 `chapter_no`
@@ -91,6 +91,12 @@ source-audit.json
 - `source_excerpt` 非空、去空白后 ≤150 字，并在该 `line_range` 内逐字命中。
 - `assertion` 非空，是模型对该来源支撑关系的短述；不要求逐字包含在最终 claim/narrative 文案中，
   真实性由 `source_excerpt` 的确定性原文命中承担。
+- 若本页把序言、结论或附录列为独立阅读部分，`distill.chapters[].no` 可能与原书“第 N 章”编号不同。
+  此时在对应 `core_ideas`、`decision_rules`、`quotes` 条目写正整数 `source_chapter_no`，
+  指向本页阅读部分及本账本 `chNN`；读者可见 `anchor` 仍写真实原书章名。缺此字段的旧书
+  继续从 `anchor` 的“第 N 章”解析。`source_chapter_no` 不是绕过来源校验：claim 仍须有该段的
+  direct/partial 记录，引文仍须逐字命中该段原文；非法或错误编号会被拒绝。章内 excerpt
+  自动沿用所在 `distill.chapters[].no`，不另填。
 
 覆盖下限：
 
