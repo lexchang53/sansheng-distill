@@ -11,7 +11,7 @@ description: Use when 用户要把一本书全文、单个视频（按 1 集）�
 
 **这是入口编排文件。** 先读本文对齐管线,再在每一步按下表**读对应 reference / 跑对应 script**;references 是各步的执行细则,不要凭记忆做。
 
-**书籍默认路线（蒸馏任何一本书都先读）**：先按 [high-retention-books.md](references/high-retention-books.md) §0 定档并做来源完整性预检；**深读档**（核心经典）按 §0.3 固定顺序「来源放行 → 冻结知识分母 → 写深读 → 全句事实审计并裁决 → 逐项覆盖检查 → 连续阅读验收 → 签署放行」执行，默认比例、排除项、审阅预算见 §0.2/§0.4，写法与跨书去重见 §5.1，不再逐本与用户商量；**导读档**走下表 Step0–Step7。机器初审用方舟 Coding Plan，不用按调用计费的判别模型（Jev 已停用于书籍蒸馏）。`scripts/book_coverage.py` 的数据门与 Step7 实际页面门分别通过，不能以字数比、模型自评或 JSON 齐备代替。参考实现在 Cowork `读书蒸馏/management-tools/upgrade_*.py`（操作手册 `UPGRADE-RUNBOOK.md`）。
+**书籍默认路线（蒸馏任何一本书都先读）**：先按 [high-retention-books.md](references/high-retention-books.md) §0 定档并做来源完整性预检；**深读档**（核心经典）按 §0.3 固定顺序「来源放行 → 冻结知识分母 → 写深读 → 全句事实审计并裁决 → 逐项覆盖检查 → 连续阅读验收 → 签署放行」执行，默认比例、排除项、审阅预算见 §0.2/§0.4，写法与跨书去重见 §5.1，不再逐本与用户商量；**导读档**走下表 Step0–Step7。多本并行时再读 [book-batch-operations.md](references/book-batch-operations.md)，按当期项目配置选择并实测模型车道，不把历史批次的套餐或并发数当默认。`scripts/book_coverage.py` 的数据门与 Step7 实际页面门分别通过，不能以字数比、模型自评或 JSON 齐备代替。参考实现在 Cowork `读书蒸馏/management-tools/upgrade_*.py`（操作手册 `UPGRADE-RUNBOOK.md`）。
 
 ## 先分流：蒸馏对象 → 路径
 
@@ -180,6 +180,8 @@ $DATA/
   - 数量一多就该建**从数据真源自动生成的目录页**:内容增删自动跟随,不需要谁回头维护清单。
 
 ## 批量模式(蒸多本)
+
+深读档多书的来源门、阶段回执、模型请求并发、人工裁决和发布状态先按 [book-batch-operations.md](references/book-batch-operations.md) 执行。下列 Pass2 子 Agent 的 6–8 路实测规则属于 Step0–Step7 导读管线，不是深读档或其他模型车道的通用并发值。
 
 > **成本大头在编排层,不在 Pass2 分块数**:逐章命名 ≠ 逐章派 agent,各 subagent 仍守「≤5 章/组」,砍分块数省不到 token 且掉详实度。真正吃 token/时长的四项:①并发撞 529 风暴 ②会话碎片化 re-grounding ③同作者重复联网 ④失败假重跑。以下按此立规,**优化编排、不砍生成深度**。
 

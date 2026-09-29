@@ -29,10 +29,14 @@ def printed_number(text: str) -> int | None:
     return candidates[-1] if candidates else None
 
 
-def inspect_pages(texts: list[str], *, min_chars: int = 80, duplicate_ratio: float = .90) -> dict:
+def inspect_pages(texts: list[str], *, image_counts: list[int] | None = None,
+                  min_chars: int = 80, duplicate_ratio: float = .90) -> dict:
     if not texts:
         return {"page_count": 0, "printed_page_jumps": [], "near_duplicate_pages": [],
-                "low_text_pages": [], "errors": ["PDF has no pages"]}
+                "low_text_pages": [], "image_only_candidates": [],
+                "errors": ["PDF has no pages"]}
+    if image_counts is not None and len(image_counts) != len(texts):
+        raise ValueError("image count must match page count")
     normalized = [normalize(t) for t in texts]
     printed = [printed_number(t) for t in texts]
     jumps = []
@@ -57,8 +61,13 @@ def inspect_pages(texts: list[str], *, min_chars: int = 80, duplicate_ratio: flo
                 duplicates.append({"pdf_pages": [i + 1, j + 1], "similarity": round(ratio, 3)})
     low = [{"pdf_page": i + 1, "text_chars": len(s)} for i, s in enumerate(normalized)
            if len(s) < min_chars]
+    image_only = [{"pdf_page": i + 1, "text_chars": len(normalized[i]),
+                   "image_count": count}
+                  for i, count in enumerate(image_counts or [0] * len(texts))
+                  if count and len(normalized[i]) < min_chars]
     return {"page_count": len(texts), "printed_page_jumps": jumps,
             "near_duplicate_pages": duplicates, "low_text_pages": low,
+            "image_only_candidates": image_only,
             "errors": []}
 
 
@@ -73,17 +82,20 @@ def main(argv: list[str] | None = None) -> int:
         import pymupdf
         with pymupdf.open(args.pdf) as doc:
             texts = [page.get_text() for page in doc]
+            image_counts = [len(page.get_images(full=True)) for page in doc]
     except (ImportError, OSError, ValueError) as exc:
         print(f"无法读取 PDF：{exc}", file=sys.stderr)
         return 3
-    report = inspect_pages(texts, min_chars=args.min_chars, duplicate_ratio=args.duplicate_ratio)
+    report = inspect_pages(texts, image_counts=image_counts,
+                           min_chars=args.min_chars, duplicate_ratio=args.duplicate_ratio)
     report["source"] = str(args.pdf)
     output = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
     if args.json_out:
         args.json_out.write_text(output, encoding="utf-8")
     else:
         print(output, end="")
-    return 2 if report["errors"] or report["printed_page_jumps"] or report["near_duplicate_pages"] else 0
+    return 2 if (report["errors"] or report["printed_page_jumps"]
+                 or report["near_duplicate_pages"] or report["image_only_candidates"]) else 0
 
 
 if __name__ == "__main__":
