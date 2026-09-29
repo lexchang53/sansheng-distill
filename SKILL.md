@@ -1,6 +1,6 @@
 ---
 name: sansheng-distill
-description: Use when 用户要把一本书全文、单个视频（按 1 集）、YouTube/B站视频系列、一个创作者的全部作品，或历史人物的生平材料做成可追溯的深度蒸馏资料；触发词：蒸馏这本书、拆书、蒸馏视频、视频系列蒸馏、蒸馏 UP 主、人物思想蒸馏、人物传记证据库、历史人物事实核验、传记事实入库。只要字幕摘要、单篇文章写作时不用此 Skill；制作「一页」产品或网站时，本 Skill 只负责公共资料与证据契约，产品规则交给 sansheng-yiye、页面工程与发布交给 sandy-website。
+description: Use when 用户要把一本书全文、单个视频（按 1 集）、YouTube/B站视频系列、一个创作者的全部作品，或历史人物的生平材料做成可追溯的深度蒸馏资料；或當使用者要求「更新/升級 sansheng-distill 技能」時（此時必須先閱讀 UPSTREAM_MAINTENANCE.md 執行標準升級流程）。触发词：蒸馏这本书、拆书、蒸馏视频、视频系列蒸馏、蒸馏 UP 主、人物思想蒸馏、人物传记证据库、历史人物事实核验、传记事实入库、更新sansheng-distill、升級sansheng-distill、升級蒸餾技能。只要字幕摘要、单篇文章写作时不用此 Skill；制作「一页」产品或网站时，本 Skill 只负责公共资料与证据契约，产品规则交给 sansheng-yiye、页面工程与发布交给 sandy-website。
 ---
 
 # sansheng-distill -- 书籍/视频蒸馏引擎(v3 浏览型)
