@@ -17,6 +17,14 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 class SectionParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -51,7 +59,7 @@ def _relative(base: str, href: str) -> str:
 
 def inspect_epub(path: Path, *, min_text_chars: int = 80,
                  fragmented_ratio: float = .5, min_nodes: int = 20) -> dict:
-    source_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+    source_sha256 = sha256_file(path)
     sections: list[dict] = []
     warnings: list[dict] = []
     with zipfile.ZipFile(path) as archive:

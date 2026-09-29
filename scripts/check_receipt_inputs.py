@@ -17,6 +17,14 @@ import sys
 SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def inspect_receipt(receipt: Path, book_dir: Path, path_map: dict[str, Path] | None = None) -> dict:
     data = json.loads(receipt.read_text(encoding="utf-8"))
     inputs = data.get("inputs_sha256")
@@ -39,7 +47,7 @@ def inspect_receipt(receipt: Path, book_dir: Path, path_map: dict[str, Path] | N
                            "reason": "missing_or_ambiguous_path"})
             continue
         path = existing[0]
-        actual = hashlib.sha256(path.read_bytes()).hexdigest()
+        actual = sha256_file(path)
         checks.append({"input": key, "status": "match" if actual == expected else "stale",
                        "path": str(path), "expected_sha256": expected,
                        "actual_sha256": actual})
