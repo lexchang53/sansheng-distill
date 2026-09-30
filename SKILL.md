@@ -5,13 +5,13 @@ description: Use when 用户要把一本书全文、单个视频（按 1 集）�
 
 # sansheng-distill -- 书籍/视频蒸馏引擎(v3 浏览型)
 
-输入一本书的电子全文(或一组视频),跑完 Step0-Step7 管线(Step2 分两遍),产出一个可 `file://` 直开的**单文件交互 HTML 蒸馏页**。
+书籍/视频主管线输入一本书的电子全文(或一组视频),跑完 Step0-Step7 管线(Step2 分两遍),产出一个可 `file://` 直开的**单文件交互 HTML 蒸馏页**。
 
 **v3 页型 = 浏览型「凝练地图 + 详实正文 + 批判证据 + 页内二级视图」**,5 个 tab 按读者逻辑链组织(① 全书速览 → ② 逐章精读 → ③ 批判与评价 → ④ 行动清单 → ⑤ 延伸阅读);交互层:脑图可点跳章节、章节手风琴多开(目录态默认收起)、两张页内全屏子视图(hash 路由开合)、多主题换肤。每 tab 具体装什么、字段与心理学科学证据层的槽位规格,详见 `references/html-spec.md` §1/§1.1(权威契约,T5 骨架逐字对齐)。
 
 **这是入口编排文件。** 先读本文对齐管线,再在每一步按下表**读对应 reference / 跑对应 script**;references 是各步的执行细则,不要凭记忆做。
 
-**书籍默认路线（蒸馏任何一本书都先读）**：先按 [high-retention-books.md](references/high-retention-books.md) §0 定档并做来源完整性预检；**深读档**（核心经典）按 §0.3 固定顺序「来源放行 → 冻结知识分母 → 写深读 → 全句事实审计并裁决 → 逐项覆盖检查 → 连续阅读验收 → 签署放行」执行，默认比例、排除项、审阅预算见 §0.2/§0.4，写法与跨书去重见 §5.1，不再逐本与用户商量；**导读档**走下表 Step0–Step7。多本并行时再读 [book-batch-operations.md](references/book-batch-operations.md)，按当期项目配置选择并实测模型车道，不把历史批次的套餐或并发数当默认。`scripts/book_coverage.py` 的数据门与 Step7 实际页面门分别通过，不能以字数比、模型自评或 JSON 齐备代替。项目若提供深读装配工具和运行手册，以项目当前版本为准；本仓保留通用证据契约与来源预检工具。
+**独立书籍默认路线（以单本书为交付单位时先读）**：先按 [high-retention-books.md](references/high-retention-books.md) §0 定档并做来源完整性预检；**深读档**（核心经典）按 §0.3 固定顺序「来源放行 → 冻结知识分母 → 写深读 → 全句事实审计并裁决 → 逐项覆盖检查 → 连续阅读验收 → 签署放行」执行，默认比例、排除项、审阅预算见 §0.2/§0.4，写法与跨书去重见 §5.1，不再逐本与用户商量；**导读档**走下表 Step0–Step7。多本并行时再读 [book-batch-operations.md](references/book-batch-operations.md)，按当期项目配置选择并实测模型车道，不把历史批次的套餐或并发数当默认。`scripts/book_coverage.py` 的数据门与 Step7 实际页面门分别通过，不能以字数比、模型自评或 JSON 齐备代替。项目若提供深读装配工具和运行手册，以项目当前版本为准；本仓保留通用证据契约与来源预检工具。
 
 ## 先分流：蒸馏对象 → 路径
 
@@ -23,6 +23,8 @@ description: Use when 用户要把一本书全文、单个视频（按 1 集）�
 | **一个历史人物的生平、作品、关系、争议与引语（证据型传记）** | **Biography · biography_corpus 路径（`references/biography-craft.md`）** |
 
 判断口诀：分析单位是「作品」→ 主管线；分析单位是「一个创作者自己的思想输出」→ StepC；分析单位是「一个人的历史生平及其证据」→ `biography_corpus`。StepA/StepB 是主管线的可选聚合步，与后两条人物路径不冲突。
+
+> **企业边界**：企业档案、经营机制、财务及控制权研究由企业研究能力主导；本 Skill 可承接其书籍蒸馏子任务。下述人物标准不放宽企业、科学或高后果书的专门核验。
 
 > **人物路径边界**：`creator_corpus` 归并一个创作者跨媒介表达出的观点族，回答「他的思想体系是什么、如何变化」；`biography_corpus` 汇合多来源的史实观察、分歧与外部核验，回答「发生过什么、证据在哪里、哪些仍有争议」。把传记做成「一页」产品、网站页面、SEO 或正式部署属于下游产品与工程，不在本 Skill 内实现。
 
@@ -133,7 +135,8 @@ $DATA/
 
 当目标是复原人物生平，而不是总结其自有作品中的思想时，使用 `biography_corpus`。这条路径不生成书籍蒸馏 HTML，也不复用 StepC 的观点族 schema。
 
-- **做什么**：为每个人物初始化独立 store → 建 Source Unit 与逐条 Observation → 由正式 reviewer 签署 admission / resolution → 形成六类 Canonical → 编写 Editorial → 补外部核验 → 以同一语义审计器执行 audit / strict-data / publish-ready → 把只读投影交给下游产品。
+- **做什么**：按书章读取与提取完整故事 → 跨书归并、逐章推进全传并复核 → 成批入库与生成投影 → 适用审计及下游交付。正式数据仍按 Source Unit → Observation → signed admission / resolution → Canonical → Editorial 关联；这是数据依赖链，不要求先审完整个资料库才写正文。
+- **质量尺度**：普通人物生平默认据成熟书籍高保留重述，尽量保留每本书 70%–80% 的故事与实质信息；跨书合并不丢独有细节，重大冲突才定向加查，不默认追原件或先完成逐段考证。生产与保留口径统一见 `biography-craft.md` §0。
 - **读哪个 reference**：`biography-craft.md`。当前实验契约为 `0.9.0-candidate`，机器形状以 `biography-contract-v0.9.0.schema.json` 为准，跨文件闭包以 `scripts/biography_contract.py` 为唯一实现。仓库 SemVer 与数据契约版本是两个独立版本域；候选契约在稳定前可能调整。
 - **模型边界**：GLM-5.3 或其他外部模型可以并行做查漏、冲突扫描和修订建议，但只能写 `recommendation_only`；正式事实裁决只允许 manifest 中登记的 `human` 或 `main_agent` reviewer 签署。
 - **跨人物隔离**：每个人物都有独立 slug、稳定 subject ID、ID namespace、路由、资源目录和 CSS scope；共享资源必须显式登记为只读并绑定摘要，禁止从另一个人物项目继承隐式默认值。
@@ -143,7 +146,9 @@ $DATA/
 
 
 
-## 硬门禁(四处,不过不许往下走)
+## 主管线硬门禁(四处,不过不许往下走)
+
+以下 Step0–Step7 门禁及书页铁律适用于独立书籍/视频主管线；StepA/B、creator_corpus、biography_corpus 按各自路径契约执行，不套书页的字数、摘录、封面或五 tab 模板。
 
 1. **Step0 exit 3 → 暂停该来源的正文生产**：诊断判「需 OCR」(扫描版纯图)或「需人工确认」(gb18030 疑似假字/乱码率>2%)时，先在已有授权内核原文件、换可用版本或做 OCR 与逐页校对；无法解决再报告明确缺口，只在需要新费用、权限或改变指定版本等决策时问用户。未放行前不硬读、不编内容；深读档还须按 `high-retention-books.md` §0.6 处理缺页。**视频系列同理**：`build_series.py` exit 3(全部视频都缺转写，一个都没抓到)时先核 manifest 与可用字幕，仍无可靠语料再报告缺口，不拿空语料硬蒸。
    > **`toc_detected: false` / `chapters_detected: 1` 也要停**(v0.5 补):目录结构没识别出来 = 蒸馏时手里**没有原书章节划分**,章数只能靠模型自由发挥(2026-07-26 实测:6 本全切自同一个「套装共5册」合订 epub,`toc_detected` 全 false,产出的章数一律被压成 6 章)。
@@ -163,7 +168,7 @@ $DATA/
 
    它逐本核 ①产物齐备(缺 distill/html = 这本根本没蒸完)②`verify_page.py` 退出码 ③交付卫生(enrich 缺失 / `_pass2_g*.json` 中间态残留)。心理学严格批次还强制 `book.txt` 与 `source-audit.json` 存在，自动传播 `--source` 并逐书复算审计 hash；默认批次行为不变。**退出码 0 才允许上站**;非 0 时二选一 -- 补完管线,或**把这本从上站名单里摘掉**。⚠ **名单留着而产物不存在 = 线上 404**(2026-07-26 实测:6 本里 2 本只跑到 Step0,仍被挂上作品集页)。
 
-## 铁律(每步都守)
+## 主管线铁律(每步都守)
 
 - **锚点**:蒸馏内容必须锚定原文,`method.md §5.1` **六类字段**(core_ideas / decision_rules / quotes / mental_models.evidence / chapters.excerpts / self_check)每条带 `anchor`,上站进 `data-source`;无锚点论断 = 门禁打回。
 - **论点式标题(v2)**:`chapters[].title` / M04 `<h3>` 一律**可反驳的判断句**,禁「第N章 / 视频N」式纯章号、禁通用容器词(章节脉络/全书脉络/金句墙/总结/概述…),有效长度 ≥8 字(G8;verify 机拦黑名单+长度,判断句语义靠蒸馏自查)。**脑图二级节点(v4 批 A 双层化)例外**:`topic` 改概念关键词 ≤10 字做扫读层、**取消 ≥8 字下限**(仍守黑名单+禁容器词);可反驳判断句下沉到 `tags[0]`(≥8 字,verify 机拦缺失/过短),`tags[1]` 放「第N章」章码 chip(见 method §4.6 / html-spec §5)。
