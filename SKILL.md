@@ -11,7 +11,7 @@ description: Use when 用户要把一本书全文、单个视频（按 1 集）�
 
 **这是入口编排文件。** 先读本文对齐管线,再在每一步按下表**读对应 reference / 跑对应 script**;references 是各步的执行细则,不要凭记忆做。
 
-**独立书籍默认路线（以单本书为交付单位时先读）**：先按 [high-retention-books.md](references/high-retention-books.md) §0 定档并做来源完整性预检；**深读档**（核心经典）按 §0.3 固定顺序「来源放行 → 冻结知识分母 → 写深读 → 全句事实审计并裁决 → 逐项覆盖检查 → 连续阅读验收 → 签署放行」执行，默认比例、排除项、审阅预算见 §0.2/§0.4，写法与跨书去重见 §5.1，不再逐本与用户商量；**导读档**走下表 Step0–Step7。多本并行时再读 [book-batch-operations.md](references/book-batch-operations.md)，按当期项目配置选择并实测模型车道，不把历史批次的套餐或并发数当默认。`scripts/book_coverage.py` 的数据门与 Step7 实际页面门分别通过，不能以字数比、模型自评或 JSON 齐备代替。项目若提供深读装配工具和运行手册，以项目当前版本为准；本仓保留通用证据契约与来源预检工具。
+**独立书籍路线（先定档，再加载对应流程）**：先按 [high-retention-books.md](references/high-retention-books.md) §0 选择档位；用户明确批准效率与审计粒度取舍时进入 [完整读者版](references/reader-edition-books.md)，不同时加载严格深读的生产与签署流程。**严格深读档**按该文 §0.3 执行来源放行、知识分母、正文、事实/覆盖审阅和数据签署；**导读档**走下表 Step0–Step7。档位只改变生产与证据粒度，来源忠实、真实科学裁决及页面/发布验收仍按实际契约。多书共享车道时再读 [book-batch-operations.md](references/book-batch-operations.md)。已有正式书先用 [redistillation.md](references/redistillation.md) 做整包迁移；项目工具只能证明其实际检查的档位与范围，不把严格工具绿灯或 JSON 齐备当成读者版、科学正确或已上线。
 
 **批量提效的显式可选档**：用户要求逐环节复核成本、减少token/人工耗时并接受低风险质量取舍时，先读 [efficient-book-distillation.md](references/efficient-book-distillation.md)。该档明确来源忠实性、外部事实核查与时间敏感更新的区别，允许在授权范围内取消管理书常规外查、减少低风险重复审阅；对应书籍的流程与抽样按该档及项目配置执行，默认严格档仍保留。联合检查/局部模型编辑等未验证替代须先试点，不用新指令伪造旧工具所需回执；企业、科学、传记及高后果核验不因管理书提效而降级。
 
@@ -19,7 +19,7 @@ description: Use when 用户要把一本书全文、单个视频（按 1 集）�
 
 | 蒸馏对象 | 走路径 |
 |---|---|
-| 一本书全文 | 先按 high-retention-books.md §0 定档；深读档走该文 §0.3，导读档走主管线 Step0-B（下表） |
+| 一本书全文 | 先按 high-retention-books.md §0 定档；完整读者版走 reader-edition-books.md，严格深读档走该文 §0.3，导读档走主管线 Step0-B（下表） |
 | 单个视频（按 1 集）/ 一个视频系列 | 主管线 Step0-V（下表） |
 | **一个博主/人物的全部作品（跨媒介思想蒸馏）** | **StepC · creator_corpus 路径（`references/creator-craft.md`）** |
 | **一个历史人物的生平、作品、关系、争议与引语（证据型传记）** | **Biography · biography_corpus 路径（`references/biography-craft.md`）** |
