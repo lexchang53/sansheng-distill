@@ -90,6 +90,10 @@ $DATA/
 
 > ⚠ Step6 必须保留正式 page-skeleton.html 的完整结构与交互。可以直接填骨架，或使用明确支持“已验收成品页作为结构参考”的渲染器；两类输入不能混用。成品参考页中所有书籍数据槽必须重新投影，不能残留旧书公式、作者或隐藏子视图。严禁另起极简 HTML 壳，或删掉 theme-picker、initMindmap()、initHashRouter()；合成路由测试也不能替代实际书页的 Step7 与截图验收。
 
+### 旧书重蒸分流
+
+已有正式书要替换时，在定档后先读 [redistillation.md](references/redistillation.md)：声明整包角色依赖，使用 `update_index.py replace-book` 撤销取消的旧贡献，心理学补版本绑定的科学终审收据。`register --force` 保留历史增量语义，不能代替整书替换；最终仍须实际页面与项目消费者验收。
+
 ## StepA · 作者演变聚合(可选,同一作者 ≥2 部已蒸时)
 
 某作者在 `$DATA` 下已蒸 **≥2 部**作品时,可选做「思想演变专题」聚合页;单书蒸馏不涉及,**<2 部不生成**。

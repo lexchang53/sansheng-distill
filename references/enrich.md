@@ -119,6 +119,8 @@
 
 ### 1.1 evidence_page 心理学科学证据层(v2.1,G24)
 
+心理学书重蒸另按 [redistillation.md §3](redistillation.md#3-科学证据终审收据) 记录逐来源访问层级、核查定位、准确元数据及主控终审，并用 `verify_science_review.py` 检查版本与键集合。结构通过不自动确认科学正确；摘要/作者稿按实际可证实范围裁决，不冒称全文、不强凑状态配额。
+
 这一层回答「这条心理学主张在书外站不站得住」,与 `evidence_level`(原书转述忠实度)和 `certainty`(内容来源)正交。执行顺序固定:
 
 1. 从 `distill.core_ideas[] + decision_rules[]` 收集全部唯一 `claim_id`;`evidence_page.claims` 的键集合必须**无多无少完全相等**。框架、方法论、规范建议也不能跳过。
