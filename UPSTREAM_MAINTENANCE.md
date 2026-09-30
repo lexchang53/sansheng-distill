@@ -18,11 +18,27 @@
 
 ## 🚀 標準升級步驟 (SOP)
 
-### 第一步：同步上游代碼 (Sync Upstream)
+### 第一步：環境與身份自動判定 (Auto-Detect Role via Git Remote)
+
+執行以下指令檢查目前遠端倉庫：
 ```bash
-git fetch upstream
-git merge upstream/main
+git remote -v
 ```
+
+- **情況 A（維護者模式 · 有 `upstream`）**：
+  若存在 `upstream`（指向官方 `sanshengai/sansheng-distill`），代表為倉庫維護者，執行以下指令拉取並合併官方最新代碼：
+  ```bash
+  git fetch upstream
+  git merge upstream/main
+  ```
+  *(合併完成後，請繼續執行下方的「第二步：檢查並套用 3 個核心補丁」)*
+
+- **情況 B（一般用戶模式 · 僅有 `origin`）**：
+  若**無** `upstream` 遠端，代表目前為終端使用者，請直接自本 Fork 倉庫拉取已維護完成的最新繁體版，**不可**執行後續手動補丁步驟：
+  ```bash
+  git pull origin main
+  ```
+  *(終端用戶至此更新完畢)*
 
 ### 第二步：檢查並套用 3 個核心補丁 (Apply Core Patches)
 
