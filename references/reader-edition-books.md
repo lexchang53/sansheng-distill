@@ -40,3 +40,16 @@
 计时与用量按 book-batch-operations.md §5；至少记录输入/输出版本、阶段开始结束、调用数、去重已知token、未知usage、返工理由、排队及交付状态。没有记录标未知，不补造历史数字。
 
 strict与reader分别报告。reader完整性依据章节主论证/案例/反例/限制清单及审核结果，不调用book_coverage.py后把其严格逐项覆盖状态改为true；已有严格证据可以复用，但如实保留其原档位。页面与发布门禁仍保留。若工具只接受旧严格输入，新增显式档位与反例后再用，不假造签署、不跳门。检查器通过只证明它实际覆盖的契约，不能代替阅读或上线。
+
+## 5. 页面校验的读者档输入
+
+在 distill.json 顶层显式写 `quality_profile: "reader"`，并保存真实审核后的 `reader-review.json`。运行原页面入口：`python3 "$SKILL/scripts/verify_page.py" <页面.html> --distill <distill.json> --source <book.txt> --reader-review <reader-review.json>`；心理学项目仍加 `--require-domain psychology`。未传 `--reader-review` 时读取 distill.json 同目录同名记录；`--skip-interact` 也不跳过它。
+
+收据契约由 `scripts/verify_reader_review.py` 验证，不自动生成签署：
+
+- 顶层 `schema: "reader-review-v1"`；当前文件字节的 `distill_sha256`、`source_sha256`；`authorization` 记录用户接受的取舍；`reviewer`、ISO `reviewed_at`、`review_evidence` 记录实际审阅者、时间和审阅包位置；`unresolved_material_errors` 必须为整数0。
+- `chapters` 与正文章节 `no` 集合精确一致，每项含正文 UTF-8 哈希 `narrative_sha256`、`fidelity: "reviewed"`、实际来源/审阅定位 `evidence`，以及 `coverage` 四项：`argument`、`cases`、`counterexamples`、`limits`。每项是含 `status` 和非空 `note` 的对象；主论证必须 reviewed，其余可 reviewed 或 not_applicable，后者写明原部分为何没有此项。记录实际审阅发现，不能批量填“均已审阅”代替审阅。
+
+本档用非空连续正文与逐章审阅记录替代固定800字和每章必配摘录；有价值的原话仍可保留，摘录长度/版权、来源锚点、科学字段、高后果约束及其他页面检查继续执行。源短不注水，源无必要原话不强配摘录。未选reader的旧输入保持原有校验行为。
+
+机器只验证记录完整性、版本绑定及拒绝状态；章节集合与 distill.json 相等并不证明原书未漏章，须按来源预检中的有效章节/实质附录清单逐项核装配范围。记录中的语义判断由实际审阅负责，不证明全句核验或严格逐项覆盖。来源图表、跨书索引、整包迁移和公网交付还须完成各自消费者契约。

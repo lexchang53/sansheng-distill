@@ -33,6 +33,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 from validate_psychology_source_audit import validate_source_audit_file
+from verify_reader_review import validate_reader_review
 
 if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
     sys.stdout.reconfigure(encoding="utf-8")
@@ -1419,6 +1420,12 @@ def lint_distill(data: dict, source_text: str | None = None,
     # G23 是 domain 条件门，不受 render_profile.active_gates 控制。
     v += lint_psychology_distill(data, required_domain=required_domain)
     is_video = data.get("source_type") == "video_series"
+    quality = data.get("quality_profile")
+    reader = quality == "reader"
+    if quality not in (None, "strict", "guide", "reader"):
+        v.append("[distill] 未知 quality_profile")
+    if reader and is_video:
+        v.append("[reader] 读者档只适用于书籍")
     # render_profile(2026-07-12 B-1/B-2):无 profile → active=None = legacy 全 Tier-1(向后兼容,旧书不必重蒸)
     prof = data.get("render_profile")
     reg = RENDER_PROFILES.get((prof or {}).get("archetype")) if isinstance(prof, dict) else None
@@ -1433,17 +1440,19 @@ def lint_distill(data: dict, source_text: str | None = None,
     floor = DENSE_CARD_FLOOR if nmode == "dense-card" else (400 if is_video else 800)
     for ch in data.get("chapters", []) or []:
         no = ch.get("no", "?")
+        if reader and not re.search(r"[^\W_]", ch.get("narrative", "") or "", re.UNICODE):
+            v.append(f"[reader] 第{no}章正文为空或无有效文字")
         # G9 narrative 详实度(list/none 档不产 narrative → 关;dense-card 降档)
         if gon("G9"):
             narr_len = len(re.sub(r"\s", "", ch.get("narrative", "") or ""))
-            if narr_len < floor:
+            if not reader and narr_len < floor:
                 v.append(f"[distill] 第{no}章 narrative {narr_len} 字 < {floor}(G9 详实度)")
         # G8 章标题黑名单
         if gon("G8") and is_bad_title(ch.get("title", "") or ""):
             v.append(f"[distill] 第{no}章标题非论点式(G8): {ch.get('title')!r}")
         # G14 excerpts:详实逐章档书籍每章 ≥1(视频/语录/清单档不强求),版权红线 ≤150 与 §5.1 anchor 恒为 Tier-0
         exs = ch.get("excerpts", []) or []
-        if not is_video and nmode == "full-800" and len(exs) < 1:
+        if not reader and not is_video and nmode == "full-800" and len(exs) < 1:
             v.append(f"[distill] 书籍第{no}章 excerpts 缺(G14 每章 ≥1)")
         for ex in exs:
             if len(re.sub(r"\s", "", ex.get("text", "") or "")) > EXCERPT_MAX:
@@ -2720,6 +2729,7 @@ def main():
     ap.add_argument("page")
     ap.add_argument("--distill", help="distill.json 路径:传入则追加契约门禁(G8-G18)+ 渲染侧查重")
     ap.add_argument("--source", help="book.txt 路径:传入则追加事实门禁（摘录原文命中、章节锚点、跨章重复）")
+    ap.add_argument("--reader-review", help="reader 档必需的来源绑定审阅记录；默认同目录 reader-review.json")
     ap.add_argument("--enrich", help="enrich.json 路径:传入则校验降级一致性;缺省自动探测同目录 enrich.json")
     ap.add_argument("--author-json", dest="author_json",
                     help="author.json 路径:传入即按作者演变页门禁校验;缺省时若页面含内联 #author-data 自动识别")
@@ -2762,6 +2772,9 @@ def main():
             enrich_path = sib
             enrich = json.loads(sib.read_text(encoding="utf-8"))
     v = lint_html(html, distill, enrich, required_domain=a.require_domain)
+    if isinstance(distill, dict) and distill.get("quality_profile") == "reader":
+        review_path = a.reader_review or Path(a.distill).parent / "reader-review.json"
+        v += validate_reader_review(a.distill, a.source, review_path)
     if a.require_domain == "psychology":
         v += lint_required_psychology_source_audit(
             page_path,
