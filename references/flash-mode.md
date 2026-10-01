@@ -1,9 +1,8 @@
 # flash-mode -- 轻量模型 / 弱 agent 执行卡
 
-> **谁该读这份**:用 Gemini Flash 级轻量模型、或 agent 编排能力较弱的客户端(如 Antigravity)跑本 skill 时,**先读本卡再读 SKILL.md**。
-> 用 Opus / Sonnet 级模型跑的,不必读本卡,照 SKILL.md 主管线走即可。
->
-> **本卡不降低任何质量标准**,只做三件事:①把「靠自觉」的环节换成「可自检的判据」;②把长链条拆成带完成凭证的短步;③把最容易滑落的六个点单独拎出来钉死。
+> **谁该读这份**：轻量模型或编排能力较弱的客户端。先读 SKILL.md 的对象分流并确定档位，再读本卡。
+> **适用边界**：§2 的 Pass1/Pass2、800字和每章摘录判据仅用于导读/视频主管线。完整读者版执行 reader-edition-books.md 的六步与审核收据；严格深读执行 high-retention-books.md 的专门契约。两者只参考本卡中实际适用的来源、字段、占位与页面验证底线，不叠加另一套生产或审阅。
+> 本卡把已选流程的要求变成可自检判据，不改变用户已授权的质量取舍。下文事故与数字保留为历史案例，不作为所有档位的统一阈值。
 
 ---
 
@@ -50,12 +49,12 @@ python $SKILL/scripts/convert_book.py "<套装.epub>" --outdir "$DATA/{slug}" --
 
 ```
 toc_detected: true   → 正常开工
-toc_detected: false  → 停下问用户。别硬蒸,章数会失控
+toc_detected: false  → 暂停该来源的正文生产；先核原目录、换版本或恢复章界，不凭模型猜章节
 ```
 
-### 1.2 一本书 = 一个会话
+### 1.2 按书隔离状态
 
-多本塞一个会话会反复 compact 丢上下文。轻量模型尤其扛不住,**一本一会话**。
+每本书独立保存来源、任务与断点，避免跨书串数据。批量任务可由一个主控调度；不因这张卡强制另开会话或增加 Agent，车道与并发按 book-batch-operations.md 及项目配置。
 
 ---
 
@@ -70,7 +69,7 @@ python $SKILL/scripts/convert_book.py "<书文件>" --outdir "$DATA/{slug}"
 ```
 
 **判据**:`book.txt` 与 `diagnose.json` 都已落盘 且 `toc_detected: true` 且 exit 0。
-exit 3(需 OCR / 需人工确认)→ **停下问用户**,不硬读、不编内容。
+exit 3（需 OCR / 需人工确认）→ 暂停该来源的正文生产，先在已有授权内核原件、换版本或 OCR。只有缺少关键版本决定、新费用或权限时才问用户；不硬读、不编内容。
 
 ### Step1 · 书型判定 + render_profile
 

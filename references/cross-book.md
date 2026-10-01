@@ -66,6 +66,8 @@
 
 ## 2. Step4 执行流程(精确命令,四步)
 
+**分流：下列四步适用首次/增量登记。替换正式旧书先读 [redistillation.md §2](redistillation.md#2-显式整书索引替换)，走 `replace-book`。`register --force` 不撤销本次已取消概念中的旧书贡献。**
+
 **① 拿现有概念名单(只读):**
 
 ```
