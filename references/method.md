@@ -28,7 +28,7 @@
 | `分组蒸馏` | 进 §1 定书型后,Step2 走 §8 分组流程(禁一次性硬吞) |
 | `需OCR` / `需人工确认` | **本手册不启动**,退回 Step0 报告扫描版/需人工;不硬读、不编内容 |
 
-> **`toc_detected` / `chapters_detected` 是启发式信号,不消费、不作门槛**:convert_book.py 靠章头正则统计,对「第N章/N. 标题/Chapter N/罗马数字章」等规整版式召回好;但**意译短标题的外版书**(如《投资最重要的事》《聪明的投资者》,章名是「最重要的事是二阶思维」这类短语、不带任何章号)会偏低甚至 `chapters_detected=1 / toc_detected=false`。**这不阻断蒸馏**:章节以 §1 全书通读提炼为准(§6 `chapters[]` 手工锚定),diagnose 的两字段仅供参考,别据它判「这本书没有章节」而降级。
+> **`toc_detected` / `chapters_detected` 是启发式信号**：短语章名可能不被正则识别，信号异常时先核实际目录、原书标题与章首尾，并记录可回查的章界；真实范围完整且章界核清才继续。不因这两个字段单独判死，也不能只凭模型“通读”猜章节；套装未切或真实章界缺失仍暂停（见 pipeline-rules.md 来源门）。
 
 ---
 
@@ -268,7 +268,7 @@ xray 餐巾纸是「公式 + 读法段 + 一句话 + 草图」四件套;v1-v3 �
 
 章数多(如 20 章)时按章分组并行:
 
-1. **分组**:按章切组,**每组 ≤5 章**;每组派 1 个 subagent(全 Opus),各拿「本组各章 Pass 1 骨架 + 本组原文切片」。**并发上限**:全局在飞的 Pass2 subagent **≤ 6-8**(批量多本时跨会话统算,见 pipeline-rules.md `§批量模式` 并发闸),别一次性起满所有组、别多作者同时段并跑(会引爆 529 风暴)。
+1. **分组**：按章节与论证边界组织，每组通常不超过 5 章；批大小服从实际上下文与来源长度。只在有收益且环境支持时委派，各组拿对应骨架与来源切片；模型及跨会话并发使用真实项目配置，不固定 Opus 或历史 6–8 路。
 2. **组内串行**:subagent 组内逐章写 narrative + excerpts(串行,保上下文连贯),不跳章。
 3. **产物落盘·统一命名(硬)**:每组写 **`$DATA/{书目录}/_pass2_g{N}.json`**(N=组序,连续)。**只用这一套命名**——禁 `_ch_N` / `_pass2_N` / `_pass2_batchX` 等即兴变体(并发多会话命名漂移会致合并对不齐、掉章;复盘曾四套并存)。
 4. **主控合并 + 完整性门禁(硬)**:各组 `_pass2_g*.json` 回填 `distill.json` 对应 `chapters[].no`,主控做:
@@ -988,21 +988,21 @@ R3「知识连接」提出的每个可复用概念写进 `concepts[] = {concept,
 
 ### V.0 取材:视频 -> 干净转写稿(固定流程,build_series 之前)
 
-蒸馏吃的是**转写全文**(做三轮压缩/金句/锚点),不是画面语义 -- 故取材按「哪条最干净、最省」分流,不一刀切「YouTube 一律 Gemini」。两个上游 skill 分工(2026-07-05 实测确认,均可直接引用):
+蒸馏吃的是**转写全文**(做三轮压缩/金句/锚点),不是画面语义 -- 故取材按「哪条最干净、最省」分流,不一刀切「YouTube 一律 Gemini」。字幕与多模态是两个上游能力；先发现当前环境的工具，旧供应商只是可选示例，不假定已安装或旧参数仍有效：
 
 | skill | 干什么 | YouTube 免下载 | 何时用 |
 |---|---|---|---|
-| **video-to-subtitle-summary**(vendor,`~/.claude/skills/`) | 出字幕/转写文本(yt-dlp 抓字幕 / faster-whisper ASR / AI Douyin 下载非 YT) | ✅ 抓字幕 | **默认**:口播/知识型,转写就是价值 |
+| 可用字幕/ASR 工具（如 video-to-subtitle-summary） | 出字幕/转写文本(yt-dlp 抓字幕 / faster-whisper ASR / AI Douyin 下载非 YT) | ✅ 抓字幕 | **默认**:口播/知识型,转写就是价值 |
 | **sansheng-gemini-video**(可选外部依赖) | Gemini 原生看画面+音频 -> 转写/结构化理解 | ✅ `fileData.fileUri` 在线看 | **无字幕 / 需画面语义**(演示/代码/图表/PPT) |
 
 **取材 cascade(按平台分流,能不下载就不下载):**
 
 ▎**YouTube**(在线优先)
-1. 抓字幕:`python ~/.claude/skills/video-to-subtitle-summary/scripts/download_youtube_subtitles.py <url> --output-dir raw/{NN}_{id} --languages <manuallang>,en-US,en,zh-Hans`。
+1. 用实际可用的 yt-dlp 或字幕工具抓字幕；目录和语言由真实平台元数据确定，先核当前工具帮助，不调用未安装的固定客户端路径。
 2. **认准【人工】字幕作转写源**:人工字幕文件(如 `subtitle.en-US.vtt`)一句一 cue、**无 `<...><c>` 内联词级标签、无 `align:/position:` 参数、无连续重复行**;VTT 可**直喂 build_series**(`SRT_TIME` 正则 `[,.]` 两用,兼容 vtt 毫秒点)。
    - ⚠️ **坑(Q6-4)**:`Kind: captions` 头**人工/自动都有,不能作判据**;脚本默认落地的 `text.txt`/`subtitle.srt` 常取**自动字幕**,带 `<c>` 词级标签 + 滚动重复约 **3×**(字数虚高 2-3 倍)。**别用 text.txt 当转写源**;快速判真:字数 ≈ 时长×(英文 ~150 / 中文 ~250)wpm 才对,2-3× 于此即为自动字幕。
 3. 只有【自动】字幕(无人工)-> 抓下来**必须去重**:去 `<...>` 标签 + 去 `align:/position:` + 折叠连续重复行,再喂 build_series。
-4. 无字幕 OR 需画面语义 -> `python ~/.claude/skills/sansheng-gemini-video/scripts/analyze_video.py <url> --prompt "逐字转写带[MM:SS],逐字照录不总结" --fps 0.2 --start/--end`(低 fps + 裁片段控成本;实测 ~$0.01/2min,40min ≈ $0.2;转写质量实测 ≈ 人工字幕)。
+4. 无字幕或需画面语义 → 可用 sansheng-gemini-video 或对应多模态能力，按其当前入口执行；只分析需要的片段。历史价格与参数不作为当前调用契约。
 5. 兜底 -> 下载音频 + faster-whisper(`ASR_BACKEND=faster-whisper`)。
 
 ▎**非 YouTube**(B站/抖音/小红书:**先下载再解析**)

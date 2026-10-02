@@ -1,148 +1,55 @@
 ---
 name: sansheng-distill
-description: Use when 用户要把一本书全文、单个视频（按 1 集）、YouTube/B站视频系列、一个创作者的全部作品，或历史人物的生平材料做成可追溯的深度蒸馏资料；触发词：蒸馏这本书、拆书、蒸馏视频、视频系列蒸馏、蒸馏 UP 主、人物思想蒸馏、人物传记证据库、历史人物事实核验、传记事实入库。也用于已蒸书库的类别总览、书目与主题聚合。只要字幕摘要、单篇文章写作时不用此 Skill；制作「一页」产品或网站时，本 Skill 只负责公共资料与证据契约，产品规则交给 sansheng-yiye、页面工程与发布交给 sandy-website。
+description: 将书籍、单集或系列视频、创作者作品、人物生平或人物专题蒸馏成有来源的可读资料；也处理已蒸书库的作者、问题专题与类别聚合。企业研究交给企业研究能力，本 Skill 承接其中的书籍/人物资料子任务。只要字幕摘要、普通单篇文章或页面工程时不触发。
 ---
 
-# sansheng-distill -- 书籍/视频蒸馏引擎(v3 浏览型)
+# 蒸馏：识别对象，按需加载，复用已有成果
 
-输入一本书的电子全文或一组视频，先按下文选择路线，再产出一个可本地直开的**单文件交互 HTML 蒸馏页**。Step0–Step7（Step2 分两遍）是导读/视频主管线；完整读者版与严格深读分别使用其专门流程。
+交付忠实、可回查的阅读资料与结构化数据。默认效率优先：一条生产路线、一套权威正文、有限审阅、定点修复；不为凑流程重蒸。书页、人物库、专题资料的格式由所选路线和实际消费者决定。
 
-**v3 页型 = 浏览型「凝练地图 + 详实正文 + 批判证据 + 页内二级视图」**,5 个 tab 按读者逻辑链组织(① 全书速览 → ② 逐章精读 → ③ 批判与评价 → ④ 行动清单 → ⑤ 延伸阅读);交互层:脑图可点跳章节、章节手风琴多开(目录态默认收起)、两张页内全屏子视图(hash 路由开合)、多主题换肤。每 tab 具体装什么、字段与心理学科学证据层的槽位规格,详见 `references/html-spec.md` §1/§1.1(权威契约,T5 骨架逐字对齐)。
+## 1. 先识别本轮任务
 
-**这是入口编排文件。** 先读本文对齐管线,再在每一步按下表**读对应 reference / 跑对应 script**;references 是各步的执行细则,不要凭记忆做。
+从用户意图与已有材料判断三个维度，简短记录即可，不另造通用 JSON：
 
-**独立书籍路线（先定档，再加载对应流程）**：先按 [high-retention-books.md](references/high-retention-books.md) §0 选择档位；用户明确批准效率与审计粒度取舍时进入 [完整读者版](references/reader-edition-books.md)，不同时加载严格深读的生产与签署流程。**严格深读档**按该文 §0.3 执行来源放行、知识分母、正文、事实/覆盖审阅和数据签署；**导读档**走下表 Step0–Step7。档位只改变生产与证据粒度，来源忠实、真实科学裁决及页面/发布验收仍按实际契约。多书共享车道时再读 [book-batch-operations.md](references/book-batch-operations.md)。已有正式书先用 [redistillation.md](references/redistillation.md) 做整包迁移；项目工具只能证明其实际检查的档位与范围，不把严格工具绿灯或 JSON 齐备当成读者版、科学正确或已上线。
+- **对象**：单部作品 / 创作者思想 / 人物生平事实 / 企业 / 已蒸书库。
+- **范围**：全书或全生涯 / 明确专题或时段 / 单集或系列 / 已有成果的局部更新。
+- **终点**：资料或数据 / 本地页面 / 已授权的产品交付。讨论、体检、查错只做到本轮终点。
 
-**执行时只选一条生产/审阅路线**：定档后记录本轮终点和当前阶段，按该路线读取细则；已完成的同版本阶段直接复用。读者档的联合审核与停止条件见 reader-edition-books.md §2（开写前的章界预检见 §2.5，审阅改动的应用前检查与审阅—稿子绑定见 §2.6），批次计时与瓶颈处理见 book-batch-operations.md §5。下文主管线的两遍起稿及严格档逐项签署不自动追加到读者档；来源、科学证据及消费者契约仍按实际适用范围执行。
+分析目的先于媒介和学科：一本人物传记作为独立书蒸馏仍是书籍；多本传记用来复原生平才是人物库；管理学/心理学是书籍的领域附加规则，不是重复的主流程。已有数据优先增量复用。只有关键意图无法从上下文推断且会显著扩大工作时才问；范围、样式等低风险缺项用现有约定。
 
-**批量提效的显式可选档**：用户要求逐环节复核成本、减少token/人工耗时并接受低风险质量取舍时，先读 [efficient-book-distillation.md](references/efficient-book-distillation.md)。该档明确来源忠实性、外部事实核查与时间敏感更新的区别，允许在授权范围内取消管理书常规外查、减少低风险重复审阅；仅仍有分母的管理类既有流水线采用该档的项抽样；reader按读者路线生产和抽样，只借用成本/外查政策。默认严格档仍保留。联合检查/局部模型编辑等未验证替代须先试点，不用新指令伪造旧工具所需回执；企业、科学、传记及高后果核验不因管理书提效而降级。
-
-## 先分流：蒸馏对象 → 路径
-
-| 蒸馏对象 | 走路径 |
-|---|---|
-| 一本书全文 | 先按 high-retention-books.md §0 定档；完整读者版走 reader-edition-books.md，严格深读档走该文 §0.3，导读档走主管线 Step0-B（下表） |
-| 单个视频（按 1 集）/ 一个视频系列 | 主管线 Step0-V（下表） |
-| **一个博主/人物的全部作品（跨媒介思想蒸馏）** | **StepC · creator_corpus 路径（`references/creator-craft.md`）** |
-| **一个历史人物的生平、作品、关系、争议与引语（证据型传记）** | **Biography · biography_corpus 路径（`references/biography-craft.md`）** |
-
-判断口诀：分析单位是「作品」→ 主管线；分析单位是「一个创作者自己的思想输出」→ StepC；分析单位是「一个人的历史生平及其证据」→ `biography_corpus`。StepA/StepB 是主管线的可选聚合步，与后两条人物路径不冲突。
-
-> **企业边界**：企业档案、经营机制、财务及控制权研究由企业研究能力主导；本 Skill 可承接其书籍蒸馏子任务。下述人物标准不放宽企业、科学或高后果书的专门核验。
-
-> **人物路径边界**：`creator_corpus` 归并一个创作者跨媒介表达出的观点族，回答「他的思想体系是什么、如何变化」；`biography_corpus` 汇合多来源的史实观察、分歧与外部核验，回答「发生过什么、证据在哪里、哪些仍有争议」。把传记做成「一页」产品、网站页面、SEO 或正式部署属于下游产品与工程，不在本 Skill 内实现。
-
-> 🪶 **用轻量模型 / 弱 agent 跑本 skill(如 Gemini Flash 级、Antigravity 客户端)→ 先读 `references/flash-mode.md`。**
-> 先定档，再读执行卡；卡片的两遍生产判据仅用于导读/视频主管线，不能覆盖读者版或严格深读流程。各档都保留来源与实际验证底线。
-> 模型能力不决定质量档位。导读/视频用主管线，读者版与严格深读按各自路线；高能力模型不必额外加载轻量执行卡。
-
-## 路径与变量约定(全文只定义一次)
-
-| 占位符 | 展开为 |
-|---|---|
-| `$SKILL` | 本 skill 目录(安装后为 `~/.claude/skills/sansheng-distill`) |
-| `$DATA` | 书数据根目录,由环境变量 `DISTILL_DATA_DIR` 指定(默认 `./distill-data`) |
-| `{slug}` | 书的 ASCII kebab 短名(如 `jinqian-xinlixue`);全站唯一,别撞投资 `NN`/育儿 `pNN` |
-| `{书目录}` | 本书数据目录,**纯 `{slug}`**(如 `jinqian-xinlixue`);不含书名,避免中文目录名、git/Windows 友好 |
-
-命令里的占位符替成实值再执行。单书目录首次运行 Step0 时自动建。
-
-## 数据目录约定(单书产物布局)
-
-```
-$DATA/
-  knowledge-index.json          # 跨书概念索引(全库共享,Step4 维护,自动 .bak)
-  {书目录}/
-    book.txt                    # 全文(书=Step0-B;视频=Step0-V 组装的转写语料)  -- gitignore
-    diagnose.json               # 入书诊断(书=Step0-B;视频=Step0-V 的 video_series 变体)
-    raw/                        # 仅视频:各集原始转写 srt/txt(Step0-V)             -- gitignore
-    series-input.json           # 仅视频:手写 manifest(Step0-V 输入)
-    series.json                 # 仅视频:规范化 manifest(Step0-V 产物,下游只读它)
-    comments.json               # 仅视频:观众评论(Step0-V,供 Step3 enrich.reviews)
-    distill.json                # 蒸馏主对象 v2(Step2 两遍产:Pass1 骨架 + Pass2 narrative/excerpts)
-    _pass2_g*.json              # Pass2 分块中间态(长书按章 fan-out 各组产物,合并回 distill) -- gitignore
-    enrich.json                 # 联网增补 v2.1(五个基础键;心理学书加 evidence_page 科学证据层)
-    claim-coverage.json         # 仅心理学:Pass1 待审计项到最终 claim 的裁决表
-    source-audit.json           # 仅心理学:原文分段、逐项来源记录与四输入 hash
-    index-merge.json            # 5-tag 合并清单(Step4 中间产物)
-    {slug}.html                 # 单文件交互蒸馏页(Step6 产物,最终交付,≤3MB;真封面 base64 内联,无独立 cover 文件)
-    _verify.png                 # Step7 验证全页截图                                  -- gitignore
-```
-
-> gitignore(建议在数据目录加 `.gitignore`):`book.txt` / `raw/` / `_verify.png` / `_pass2_*.json` / `*.bak` 不入库(版权原文 / 临时产物);其余(distill / enrich / HTML / index-merge / series / comments / diagnose;心理学另含 claim-coverage / source-audit)可入库。
-
----
-
-## 导读/视频主管线 Step0–Step7（一览）
-
-每一步的做什么 / 读哪个 reference / 跑哪条命令 / 产物 / 失败降级，完整表在 [pipeline-steps.md](references/pipeline-steps.md)；逐步照做，上一步产物是下一步输入，不凭记忆。
-
-| 步 | 做什么 | 完成判据 |
+| 意图 / 识别线索 | 主路线 | 首次只读 |
 |---|---|---|
-| Step0-B | 电子书 → `book.txt` + `diagnose.json` | exit 0；**exit 3 暂停该来源**（硬门禁①） |
-| Step0-V | 视频系列入库：取干净转写、组装语料、抓评论 | `series.json` 生成；build exit 3 同上 |
-| Step1 | 书型 + 领域判定（心理学另写 `domain_profile`） | 写入 `distill.json` |
-| Step2 | Pass1 凝练骨架 →（可选深读重述层）→ Pass2 详实转述 | 按 `method.md §7` 自查；narrative/excerpts 回填 |
-| Step3 | 联网增补；心理学书另产 `evidence_page` + 审计账本 | 五键或第六键齐全；证据不足显式标低置信 |
-| Step4 | 跨书索引登记 + 互链（`update_index.py register`，先 `--dry-run`） | register exit 0；禁用 `--force` 绕 exit 1 |
-| Step5 | 设计两遍工作法（token plan + signature） | 过反 slop 自审 |
-| Step6 | 复制 page-skeleton 填槽，生成单文件 HTML（≤3MB） | 保留完整骨架与交互，不另起极简壳 |
-| Step7 | `verify_page.py` 出厂验证 v2 | **exit 0 才算完成**（硬门禁③） |
+| “蒸馏这本书”，保留全书主要论证 | **book-reader**：普通新书默认完整读者版 | [reader-edition-books.md](references/reader-edition-books.md) §1–§2；后续按阶段读 |
+| 明确逐项审计、严格深读、精确覆盖；现有严格书续跑 | **book-strict**：严格知识分母与签署 | 新任务读 [high-retention-books.md](references/high-retention-books.md) §0；续跑先读当前阶段与 §6 变更契约 |
+| 明确只要导读、概览、低成本浏览页 | **book-guide**：导读主管线 | [pipeline-steps.md](references/pipeline-steps.md) 对应行 + [pipeline-rules.md](references/pipeline-rules.md) 适用门 |
+| 单个视频、播放列表、课程合集，目标是这些作品的内容 | **video-series**：单集是单成员系列 | pipeline-steps.md 的 Step0-V；[method.md](references/method.md) §V.0 |
+| 博主/思想家的作品体系、全部输出、思想演变 | **creator_corpus**：跨媒介观点族 | [creator-craft.md](references/creator-craft.md) §0–§3 |
+| 生平、人生经历、关系、历史事件、引语证据库 | **biography_corpus**：生平叙事与证据 | [biography-craft.md](references/biography-craft.md) §0–§1 |
+| 某人的“领导力/教育思想”等专题、某一时段或问题 | **person-topic**：限定范围，区分思想与史实 | [person-topics.md](references/person-topics.md)；不自动采集全人生/全部作品 |
+| 已蒸同作者 ≥2 本的思想演变；同问题 比较（正式主题页须 ≥3 本；两书可交比较资料） | **aggregate-author / aggregate-topic**：只聚合已有资料 | [aggregation-steps.md](references/aggregation-steps.md) 对应 StepA 或 StepB |
+| 心理学/管理学等类别全景、书目与空白 | **category-map**：类别导航 | [category-framework.md](references/category-framework.md) |
+| 企业档案、经营机制、财务、控制权或企业现状 | **企业研究**主导；子任务分别返回上述路线 | 当前环境有 `sandy-firms` 时转企业研究入口；没有时按其已有项目契约处理，不冒充本 Skill 能独立完成企业研究 |
 
-跑判成败的脚本别用 `| tail` / `| head` 取摘要（管道退出码取最后一段，会吞失败），看完整结尾行或补 `; echo "退出码=$?"`。视频路径 v2 尚未跑过 E2E，遇到骨架/门禁与视频不吻合的坑先记录再修。
+“蒸馏这个人”先看目标是思想还是人生；目标未明且缺上下文时再澄清。“人物专题”优先于“人物全量”，“已蒸聚合”优先于“从零采集”。不因作者身份自动创建人物库。
 
-### 旧书重蒸分流
+## 2. 渐进式披露与效率默认
 
-已有正式书要替换时，在定档后先读 [redistillation.md](references/redistillation.md)：声明整包角色依赖，使用 `update_index.py replace-book` 撤销取消的旧贡献，心理学补版本绑定的科学终审收据。`register --force` 保留历史增量语义，不能代替整书替换；最终仍须实际页面与项目消费者验收。
+1. **选一路**：读取上表命中的首读资料；严格深读、读者版、导读三者互斥。本次普通书效率默认已经成立，无需逐书重新申请；明确档位与现有在制书契约优先。
+2. **选当前阶段**：先定位相关标题/字段，再读对应段；长文不整份灌入。各阶段条件导航见 [reference-map.md](references/reference-map.md)，只在查找资源时打开。
+3. **复用与停止**：相同来源、正文和依赖版本的有效证据直接复用。一轮有效审核后只修实质错误并复核变化；发现系统性错误才扩大审查。预算未知不编数字，成本记录和批量调度仅在需要时读 [book-batch-operations.md](references/book-batch-operations.md)。
+4. **附加规则按条件加载**：心理学科学支持另读 [enrich.md](references/enrich.md) §1.1 和 [source-audit.md](references/source-audit.md)，读者版再读其 §3/§5；替换正式旧书读 [redistillation.md](references/redistillation.md)；仍有知识分母的管理流水线要提效才读 [efficient-book-distillation.md](references/efficient-book-distillation.md)。
+5. **到消费者才验收**：只有制作页面才加载 HTML/设计/品牌参考；只有批量页面交付才跑批量验收。只交资料不强制造 HTML、10 份网站 JSON 或推广文章。实现尚不支持目标格式时做明确适配并验证，不伪造旧契约回执。
 
-## 聚合步骤（可选，不重蒸）
+模型能力不决定档位。轻量模型需要执行卡时读 [flash-mode.md](references/flash-mode.md)，仅用于导读/视频的相关步骤；模型、并发与子 Agent 由真实环境和任务收益决定，不固定某供应商，也不默认每阶段新开 Agent。
 
-- **StepA 作者演变**：同一作者已蒸 ≥2 部时，只读各书 `distill.json` 聚合成 `author.json` + `author.html`；<2 部不生成。
-- **StepB 主题聚合**：同主题已蒸 ≥3 本时聚合成 `topic.json` + `topic.html`（分类地图 / 分歧矩阵 / 维度对照 / 书目导航）；<3 本不生成，成员由 manual 显式圈定。
-- 命令、产物、出厂验证见 [aggregation-steps.md](references/aggregation-steps.md)，契约见 `author-craft.md` / `topic-craft.md`。
+## 3. 共用底线与完成定义
 
-## 类别框架入口（按需，先于问题专题导航）
+- 来源缺页、乱码、章界不清或关键转写不可用，先修来源；不凭记忆编补。区分原书观点、编辑推断、外部事实与当前科学裁决。
+- 保留主论证、关键案例、反例、条件和实质图表。效率取舍可省重复审阅与次要例子，不能省核心意思、真实归属、关键数字和必要图意。
+- 引文回源，外部信息带真实出处；版本变化使受影响审据失效。未外查记未外查，估计不冒称逐项覆盖，机械通过不冒称语义或科学正确。
+- 精确机器契约以实际 schema、校验器与消费者为准。规则分工：本文负责路由与默认；路线参考负责流程；脚本负责其实际检查范围。冲突先查输入与实现，不降阈值、不删除检查凑绿。
+- 交付报告实际范围、采用路线、验证结果、关键缺口。页面交付需实际页面及必要截图验收；上线须既有授权和真实发布成功，数据完成不等于上线。
 
-用户要理解心理学、管理学等类别全貌，或建立“总—分”书目入口时，读 [category-framework.md](references/category-framework.md)。类别总览、具体问题专题与单书是不同层级；不把某一批书或StepB的分类地图冒充完整学科。类别导航可标空白，不受StepB三成员门槛约束；进入书间争议聚合时仍按StepB契约。单书蒸馏不自动追加类别建设。
+「一页课桌」产品规则由 `sandy-yiye` 承接，站点工程与发布由 `sandy-website` 承接；本 Skill 交付公共资料与证据。没有这些能力的环境沿当前项目契约，不自动新增产品或外发。
 
-## StepC · 人物/博主蒸馏(creator_corpus 路径)
-
-蒸馏对象是「**一个人**的跨媒介全部作品」(视频博主的全部视频 + 专栏/Newsletter + 书 + 播客)时走本路径,**不走 Step0-Step7 主管线** -- 主管线的分析单位是「一部作品」,本路径的分析单位是「人」,基本单元是跨媒介归并后的「观点族」。
-
-- **做什么**:全量采集 → 来源卡建库 → 去重聚类(观点族/主题/关系/时间线) → 总体蒸馏(系统/模型/张力/谱系) → **外部交叉核验 + 通俗化两道闸(必做)** → 产出与网站 creator-distill 契约一致的 10 份数据 JSON + 作者简介。
-- **读哪个 reference**:`creator-craft.md`(§0 路由 / §1 总原则「输入全量采集、分析完整建库、展示去重重构」/ §3 P0-P9 阶段管线与批次门 / §5 密度下限 / §6 外部交叉核验 / §7 通俗化两道闸 / §8 展示层信息架构 / §9 数据流规则)。
-- **产物**:`{人物项目目录}` 五层数据(L0-L4) + 下游网站数据包；页面渲染、契约测试与部署由消费该数据包的产品工程负责。
-- **先例与模板**:`references/creator-craft.md` 记录了经多人物实测收敛的来源卡、证据索引与导出契约；公开测试使用合成 fixture，不依赖任何私有项目目录。
-- **与 StepA 的区别**:StepA 聚合「同一作者已蒸的 ≥2 本书」(只读 distill.json,绝不重蒸);StepC 从零蒸「一个人的全部语料」。人物出了书且书已单蒸,两者可共存。
-
-## Biography · 证据型人物传记(biography_corpus 候选路径)
-
-当目标是复原人物生平，而不是总结其自有作品中的思想时，使用 `biography_corpus`。这条路径不生成书籍蒸馏 HTML，也不复用 StepC 的观点族 schema。
-
-- **做什么**：按书章读取与提取完整故事 → 跨书归并、逐章推进全传并复核 → 成批入库与生成投影 → 适用审计及下游交付。正式数据仍按 Source Unit → Observation → signed admission / resolution → Canonical → Editorial 关联；这是数据依赖链，不要求先审完整个资料库才写正文。
-- **质量尺度**：普通人物生平默认据成熟书籍高保留重述，尽量保留每本书 70%–80% 的故事与实质信息；跨书合并不丢独有细节，重大冲突才定向加查，不默认追原件或先完成逐段考证。生产与保留口径统一见 `biography-craft.md` §0。
-- **读哪个 reference**：`biography-craft.md`。当前实验契约为 `0.9.0-candidate`，机器形状以 `biography-contract-v0.9.0.schema.json` 为准，跨文件闭包以 `scripts/biography_contract.py` 为唯一实现。仓库 SemVer 与数据契约版本是两个独立版本域；候选契约在稳定前可能调整。
-- **模型边界**：GLM-5.3 或其他外部模型可以并行做查漏、冲突扫描和修订建议，但只能写 `recommendation_only`；正式事实裁决只允许 manifest 中登记的 `human` 或 `main_agent` reviewer 签署。
-- **跨人物隔离**：每个人物都有独立 slug、稳定 subject ID、ID namespace、路由、资源目录和 CSS scope；共享资源必须显式登记为只读并绑定摘要，禁止从另一个人物项目继承隐式默认值。
-- **与「一页」产品的边界**：本路径交付公共数据契约、初始化骨架与门禁，不规定某个站点的信息架构、视觉、SEO 或发布流程。下游只读 Canonical / Editorial 投影，不能把页面状态反写事实层。
-
----
-
-
-
-## 硬门禁、铁律与批量规则（停止条件一览）
-
-完整文本在 [pipeline-rules.md](references/pipeline-rules.md)。适用于导读/视频主管线；读者版、严格深读、StepA/B、creator_corpus、biography_corpus 按各自路线契约，不跨档叠加。
-
-1. **硬门禁① 来源**：Step0 或 `build_series.py` exit 3 → 暂停该来源的正文生产，先核原件 / 换本 / OCR；`toc_detected: false` 或 `chapters_detected: 1` 也要停；套装 epub 用 `--volume`；不硬读、不编内容。
-2. **硬门禁② 正文质量**：Pass1/Pass2 后按 `method.md §7` 的 G1–G23 自查；命中问题定点回补，不默认整书重蒸。
-3. **硬门禁③ 出厂验证**：`verify_page.py` exit 0 才算完成；已知心理学项目必须 `--require-domain psychology --distill … --source …`；绝不放宽阈值或删检查项假过关。
-4. **硬门禁④ 批量上站**：蒸多本时 `verify_batch.py --slugs <显式名单>` exit 0 才许上站；名单留着而产物不存在 = 线上 404。
-5. **铁律**：论断锚定原文；标题是可反驳的判断句；不编造（金句照录 ≤150 字，高后果书回原书抽检数字）；真封面；外部信息带来源 URL；破折号一律 `--`；上站必须有静态入口 + SEO 头。
-6. **批量**：先抽样 1 本再铺量；全局在飞 Pass2 subagent ≤6–8；失败先核盘再重派；`_pass2_gN.json` 合并后清理；同作者 enrich 只搜一次；索引串行登记。
-
-## 环境依赖
-
-- Python **>= 3.10**:`pip install ebooklib beautifulsoup4 pymupdf pillow pytest playwright` + `playwright install chromium`(Step7 需 chromium;`pillow` 用于真封面 / 缩略图的压缩与 base64 内联)。`biography_corpus` 候选路径另需 `jsonschema>=4`。
-- azw3 / mobi 输入需 calibre 的 `ebook-convert`(`winget install calibre.calibre`);epub/pdf/txt 不需要。
-- **视频系列**(取材 cascade 见 `method.md §V.0`):`yt-dlp`(YouTube 抓字幕 + 抓评论;B站评论走公开 API 免依赖)。B站/抖音的转写需一个字幕/ASR 上游工具(如 `video-to-subtitle-summary`,读其 `AI_DOUYIN_API_KEY`);fetch_comments 的 B站评论无需 key。**无字幕 / 需画面语义**走一个 Gemini 视频分析工具,如独立公开 skill [`sansheng-gemini-video`](https://github.com/sanshengai/sansheng-gemini-video)(读 env `GOOGLE_API_KEY`),装上即可;不装不影响书籍蒸馏与有字幕视频。
+落盘时才读 [workspace-layout.md](references/workspace-layout.md) 获取变量、数据布局和按需依赖；命令使用实际目录与 `python3`，读取原命令退出码。

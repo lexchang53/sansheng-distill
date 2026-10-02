@@ -10,6 +10,12 @@
   <sub><em>▲ 用它把尤瓦尔·赫拉利的四本书蒸成一个作品集页:作者思想演变、概念漂移、母题红线、跨书互链(12 秒静音循环预览)</em></sub>
 </p>
 
+## 按任务选路线
+
+普通新书默认「完整读者版」：一套正文、一轮有效审核、定点修复；明确逐项覆盖要求才走严格深读，只要浏览时选导读。心理学等科学证据按专项契约核验。人物生平、创作者全量思想、人物专题、单集/系列视频与已有书库聚合分别分流；企业研究由企业研究能力主导。资料交付不自动增加网页或推广。
+
+路线与默认以 [SKILL.md](SKILL.md) 为准，阶段资源见 [reference-map.md](references/reference-map.md)。下文页面展示是可选页面成果示例，不是所有蒸馏任务的统一输出。
+
 ## 这是什么
 
 丢给它一本书(`.epub` / `.pdf` / `.txt` / `.azw3` / `.mobi`),或一组视频,它跑完一条多步管线,吐出**一个可以直接双击打开的单文件 HTML 页** -- 不联网、不依赖服务器,一个文件就是全部。若输入目标是历史人物而非单部作品，它会改走 `biography_corpus`，产出来源、观察、裁决、规范事实、争议与外部核验相互反链的结构化资料库。
@@ -42,7 +48,7 @@
 | 段 | 你看到什么 |
 |---|---|
 | **① 全书速览** | 真封面 + 一句"餐巾纸公式" + 核心主张 + 可点思维导图 + 关键金句 —— 3 秒抓住全书骨架 |
-| **② 逐章精读** | 每章 800-1500 字忠实转述,可单独展开,不是标签式提炼 |
+| **② 逐章精读** | 按所选档位与实际章内容忠实转述,可单独展开,不是标签式提炼 |
 | **③ 核心一击** | 把全书最反直觉的那个论点,单独做成一张可视化 |
 | **④ 行动 & 自检** | 因果链、心智模型、决策规则,配一组读完回看的自检问句(纯浏览、无打分) |
 | **⑤ 该信几分 / 再往下** | 批判段、内在张力、正反书评、同类书、跨书回声、作者档案 —— 全带可点来源 |
@@ -133,7 +139,7 @@ git clone https://gh-proxy.com/https://github.com/sanshengai/sansheng-distill.gi
 - **插件市场装的**：`claude plugin marketplace update` 刷新市场，再 `claude plugin update sansheng-distill`
 - **clone + 软链装的**：进本仓目录 `git pull`（软链即时生效，不必重装、不必重连）
 
-**怎么知道有新版**：看本仓 [Releases](../../releases)；点仓库右上角 **Watch → Custom → Releases**，发新版时 GitHub 会通知你。每版改了什么见 [CHANGELOG](CHANGELOG.md)。
+**怎么知道有新版**：看本仓 [Releases](https://github.com/sanshengai/sansheng-distill/releases)；点仓库右上角 **Watch → Custom → Releases**，发新版时 GitHub 会通知你。每版改了什么见 [CHANGELOG](CHANGELOG.md)。
 
 ## 快速上手
 
@@ -146,7 +152,7 @@ playwright install chromium
 cp .env.example .env        # 然后填 DISTILL_DATA_DIR(蒸视频再填视频那几个 key)
 ```
 
-然后在 Claude Code 里让它蒸一本书即可。八步管线(Step0-Step7)的一览在 [`SKILL.md`](./SKILL.md),完整表在 [`references/pipeline-steps.md`](./references/pipeline-steps.md),每步细则在 [`references/`](./references/) 下。
+然后在 Claude Code 里让它蒸一本书即可。先在入口选择任务路线；导读/视频八步管线(Step0-Step7)的分流在 [`SKILL.md`](./SKILL.md),完整表在 [`references/pipeline-steps.md`](./references/pipeline-steps.md),每步细则在 [`references/`](./references/) 下。
 
 ## 配置
 

@@ -8,14 +8,7 @@
 
 ## 0. 路径与变量约定(全文只定义一次)
 
-| 占位符 | 展开为 |
-|---|---|
-| `$SKILL` | 本 skill 目录(安装后为 `~/.claude/skills/sansheng-distill`) |
-| `$DATA` | 书数据根目录,由环境变量 `DISTILL_DATA_DIR` 指定(默认 `./distill-data`) |
-| `{书目录}` | 本书数据目录,**纯 `{slug}`**(如 `touzi-zui-zhongyao-de-shi`);不含书名,避免中文目录名 |
-| 跨书索引 | `$DATA/knowledge-index.json`(数据与 skill 分离,skill 升级不动此文件) |
-| 本书合并单 | `$DATA/{书目录}/index-merge.json`(本步产出,喂给 update_index.py) |
-| 索引脚本 | `$SKILL/scripts/update_index.py`(Task 2 产物) |
+变量统一定义在 [workspace-layout.md](workspace-layout.md)，使用实际 Skill 本体与项目数据目录；命令中的占位符须替换为实值。
 
 下文命令里的 `$SKILL` / `$DATA` / `{书目录}` 直接替换成上表实值再执行。
 

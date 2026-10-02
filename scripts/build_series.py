@@ -2,7 +2,7 @@
 """视频系列转写稿 -> book.txt + series.json + diagnose.json。
 
 一个视频 = 一章,把已转写好的 srt/纯 txt 按 manifest 组装成蒸馏语料,下游四源蒸馏方法论复用书籍逻辑。
-exit: 0 正常(含部分缺转写) / 2 输入问题(manifest 缺字段 / 非法 JSON / book.txt 已存在且无 --force) / 3 全部视频都缺转写(需人工)。
+exit: 0 正常(含部分缺转写) / 2 输入问题(manifest 缺字段 / 非法 JSON / book.txt 已存在且无 --force) / 3 全部转写缺失/为空或语料乱码超阈值(需人工)。
 
 用法: python build_series.py --manifest <series-input.json> --outdir <书目录> [--force]
 """
@@ -142,7 +142,7 @@ def main():
         print(f"{txt_path} 已存在,防覆盖拒跑;确认重建请加 --force", file=sys.stderr)
         return 2
 
-    blocks, series_videos, missing = [], [], []
+    blocks, series_videos, missing, payloads, garbled_videos = [], [], [], [], []
     for v in m["videos"]:
         no, title = v["no"], v["title"]
         sv = dict(v)
@@ -154,7 +154,17 @@ def main():
             series_videos.append(sv)
             continue
         text = tpath.read_text(encoding="utf-8", errors="replace")
-        block = assemble_video(no, title, parse_srt(text))
+        cues = parse_srt(text)
+        payload = "\n".join(line for _, line in cues).strip()
+        if not payload or not re.search(r"[^\W_]", payload, re.UNICODE):
+            missing.append(no)
+            sv["chars"] = 0
+            series_videos.append(sv)
+            continue
+        payloads.append(payload)
+        if garbled_ratio(payload) > 0.02:
+            garbled_videos.append(no)
+        block = assemble_video(no, title, cues)
         blocks.append(block)
         sv["chars"] = count_chars(block)
         series_videos.append(sv)
@@ -163,23 +173,24 @@ def main():
     chars_per_video = [sv["chars"] for sv in series_videos]
     chars_total = sum(chars_per_video)
     book = "\n".join(blocks)  # 视频之间空一行分隔(每块自带尾部换行)
-    g = round(garbled_ratio(book), 4) if book else 0.0
-    rec = recommend(g, chars_total, missing)
+    g = round(garbled_ratio("\n".join(payloads)), 4) if payloads else 0.0
+    rec = "需人工确认" if garbled_videos else recommend(g, chars_total, missing)
 
     diag = {
         "mode": "video_series",
         "videos_total": videos_total,
         "videos_missing_transcript": missing,
+        "videos_garbled_transcript": garbled_videos,
         "chars_total": chars_total,
         "chars_per_video": chars_per_video,
         "garbled_ratio": g,
         "recommendation": rec,
     }
 
-    # 全部视频都缺转写(一个都读不到)→ 无可用语料,只落诊断供人工排查,exit 3
-    if len(missing) == videos_total:
+    # 无可用正文或乱码超既有阈值，只落诊断供排查，标题不能充当语料。
+    if len(missing) == videos_total or garbled_videos:
         (out / "diagnose.json").write_text(json.dumps(diag, ensure_ascii=False, indent=1), encoding="utf-8")
-        print(f"全部 {videos_total} 个视频转写均缺失,无法组装语料;详见 diagnose.json", file=sys.stderr)
+        print("转写无有效正文或乱码超过 2%，暂停组装；详见 diagnose.json", file=sys.stderr)
         print(json.dumps(diag, ensure_ascii=False, indent=1))
         return 3
 

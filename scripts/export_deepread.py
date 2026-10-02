@@ -151,7 +151,16 @@ def build_facts(web_dir):
 
 def main():
     manifest = json.load(open(os.path.join(WORK, "深读清单.json"), encoding="utf-8"))
-    entries = {e["id"]: e for e in manifest["entries"]}
+    items = manifest.get("entries")
+    if (not isinstance(items, list) or not items
+            or any(not isinstance(e, dict) or not isinstance(e.get("id"), str)
+                   or not e["id"].strip() or e.get("type") not in TYPE_LABEL for e in items)):
+        print("[中止] 深读清单必须非空，条目须有合法 ID 与类型。")
+        return 1
+    entries = {e["id"]: e for e in items}
+    if len(entries) != len(items):
+        print("[中止] 深读清单 ID 重复。")
+        return 1
 
     env = {**os.environ, "PYTHONUTF8": "1"}
 
@@ -165,11 +174,17 @@ def main():
         return 1
 
     # 防幻觉闸门：红的一律不进包
-    proc = subprocess.run([sys.executable, os.path.join(BASE, "07_工具", "verify_deepread.py")],
+    proc = subprocess.run([sys.executable, os.path.join(BASE, "07_工具", "verify_deepread.py"), *entries],
                           capture_output=True, text=True, encoding="utf-8", env=env)
+    if proc.returncode != 0:
+        print(proc.stdout or "")
+        print(proc.stderr or "", file=sys.stderr)
+        print("[中止] 深读校验器失败（退出码 %s），不写导出包。" % proc.returncode)
+        return 1
     red = set(re.findall(r"^\[红\] (\S+)", proc.stdout or "", flags=re.M))
     if red:
-        print("[闸门] %d 篇判红，不进包：%s" % (len(red), ", ".join(sorted(red))))
+        print("[闸门] %d 篇判红，不写导出包：%s" % (len(red), ", ".join(sorted(red))))
+        return 1
 
     facts = build_facts(WEB)
     by_page = {k: [] for k in PAGES}

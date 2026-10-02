@@ -1,14 +1,14 @@
 # pipeline-rules.md — 导读/视频主管线的硬门禁、铁律与批量规则
 
-> 自 `SKILL.md` 迁入，**内容未改**；章节名沿用「主管线硬门禁」「主管线铁律」「批量模式」，其他 reference 里的“硬门禁①–④”“SKILL 铁律”“批量模式”指这里。
+> 自 `SKILL.md` 迁入，按现行入口路由与真实脚本契约维护；章节名沿用「主管线硬门禁」「主管线铁律」「批量模式」，其他 reference 里的“硬门禁①–④”“SKILL 铁律”“批量模式”指这里。
 > 适用于导读/视频主管线。读者版用 `reader-edition-books.md`，严格深读用 `high-retention-books.md`，不跨档叠加。
 
 ## 主管线硬门禁(四处,不过不许往下走)
 
 以下来源、实际页面/批次验收与事实版权底线适用于独立书籍/视频主管线。生产轮次和篇幅要求按已选档位：完整读者版用 reader-edition-books.md，严格深读用 high-retention-books.md，导读/视频用 Step0–Step7；不跨档叠加。StepA/B、creator_corpus、biography_corpus 按各自路径契约执行，不套书页的字数、摘录、封面或五 tab 模板。
 
-1. **Step0 exit 3 → 暂停该来源的正文生产**：诊断判「需 OCR」(扫描版纯图)或「需人工确认」(gb18030 疑似假字/乱码率>2%)时，先在已有授权内核原文件、换可用版本或做 OCR 与逐页校对；无法解决再报告明确缺口，只在需要新费用、权限或改变指定版本等决策时问用户。未放行前不硬读、不编内容；深读档还须按 `high-retention-books.md` §0.6 处理缺页。**视频系列同理**：`build_series.py` exit 3(全部视频都缺转写，一个都没抓到)时先核 manifest 与可用字幕，仍无可靠语料再报告缺口，不拿空语料硬蒸。
-   > **`toc_detected: false` / `chapters_detected: 1` 也要停**(v0.5 补):目录结构没识别出来 = 蒸馏时手里**没有原书章节划分**,章数只能靠模型自由发挥(2026-07-26 实测:6 本全切自同一个「套装共5册」合订 epub,`toc_detected` 全 false,产出的章数一律被压成 6 章)。
+1. **Step0 exit 3 → 暂停该来源的正文生产**：诊断判「需 OCR」(扫描版纯图)或「需人工确认」(gb18030 疑似假字/乱码率>2%)时，先在已有授权内核原文件、换可用版本或做 OCR 与逐页校对；无法解决再报告明确缺口，只在需要新费用、权限或改变指定版本等决策时问用户。未放行前不硬读、不编内容；深读档还须按 `high-retention-books.md` §0.6 处理缺页。**视频系列同理**：`build_series.py` exit 3（全部转写缺失/为空，或正文乱码超阈值）时先核 manifest 与可用字幕，仍无可靠语料再报告缺口，不拿空语料硬蒸。
+   > **`toc_detected: false` / `chapters_detected: 1` 要先核章界**：它们是启发式信号，短语章名可能不被正则识别；不单凭它们判定正文不可用。先对实际目录、原书标题与章首尾确认分界；没有可靠分界时暂停来源生产。套装未切、正文缺失或真实章界不明仍不能放行。可验证的原目录/章界记录是放行证据，不能仅凭模型声称“已通读”。
    > **套装/合集 epub 走 `--volume` 切,别整本硬蒸、也别手工切**:`convert_book.py --list-volumes` 列出顶层分册与各自章数 → 逐本 `--volume "<分册名>"`。切分按 TOC 顶层定分册、按 **spine 区间**取正文(未列入目录的正文续页也收进来,只取 TOC 篇目会静默丢正文),`diagnose.title` 自动取分册名。`chapters_source` 字段标明章数来自 `epub_toc` 还是 `body_regex`。
    > **v0.9.0 补**:`--list-volumes` 输出新增 `index` 字段,供 `--volume-index` 按下标寻址(分册重名时唯一可用的路径,且切出的 `title` 取自目录节点原名,遇到「目录」这类名字要人工改写)。**容器 >1MB 却只切出 <5000 字**会降级为「需人工确认」并 **exit 3** —— 那是切到封面页了,别当成书薄。古籍电子书的生僻字造字图现在转成 `〔图字:…〕` 可见标记,`diagnose.inline_glyph_images` 给计数;正文因此比旧版略长(造字图多的分册约 +0.2%~1.4%),**是补回来的信息,不是重复内容**。
 2. **正文质量自查(G1-G23)**:主管线 Pass1/Pass2 产出后按 `method.md §7` 自查；完整读者版按 reader-edition-books.md 审阅与定点修正，不追加两遍起稿。G9 篇幅/G14 摘录数量仅用所选档位契约，其余实际适用检查保留；`stakes=high` 条件激活 G22；`domain_profile.domain=psychology` 条件激活 G23，要求每条 core_idea/decision_rule 有唯一 claim_id + 合法 claim_type。命中实质问题定点回补，修正后复核受影响内容，不默认整书重蒸。
@@ -18,9 +18,9 @@
 4. **批量交付闸 exit 0 才许上站**(v0.5,蒸多本时):单本 verify 只回答「这一本合不合格」,回答不了「**这一批该有的都在吗**」。上站前把**预期名单显式**交给批量闸核对:
 
    ```
-   python $SKILL/scripts/verify_batch.py --data-root "$DATA" --slugs slug1,slug2,slug3; echo "退出码=$?"
+   python3 $SKILL/scripts/verify_batch.py --data-root "$DATA" --slugs slug1,slug2,slug3; echo "退出码=$?"
    # 已知心理学批次必须把严格域传播到每一本
-   python $SKILL/scripts/verify_batch.py --data-root "$DATA" --slugs slug1,slug2,slug3 --require-domain psychology; echo "退出码=$?"
+   python3 $SKILL/scripts/verify_batch.py --data-root "$DATA" --slugs slug1,slug2,slug3 --require-domain psychology; echo "退出码=$?"
    ```
 
    它逐本核 ①产物齐备(缺 distill/html = 这本根本没蒸完)②`verify_page.py` 退出码 ③交付卫生(enrich 缺失 / `_pass2_g*.json` 中间态残留)。心理学严格批次还强制 `book.txt` 与 `source-audit.json` 存在，自动传播 `--source` 并逐书复算审计 hash；默认批次行为不变。**退出码 0 才允许上站**;非 0 时二选一 -- 补完管线,或**把这本从上站名单里摘掉**。⚠ **名单留着而产物不存在 = 线上 404**(2026-07-26 实测:6 本里 2 本只跑到 Step0,仍被挂上作品集页)。
@@ -47,14 +47,14 @@
 
 ## 批量模式(蒸多本)
 
-深读档多书的来源门、阶段回执、模型请求并发、人工裁决和发布状态先按 [book-batch-operations.md](book-batch-operations.md) 执行。下列 Pass2 子 Agent 的 6–8 路实测规则属于 Step0–Step7 导读管线，不是深读档或其他模型车道的通用并发值。
+深读档多书的来源门、阶段回执、模型请求并发、人工裁决和发布状态先按 [book-batch-operations.md](book-batch-operations.md) 执行。下列 Pass2 历史并发/会话数量只作故障参考；执行上限取当前通道的真实配置，不能以历史值覆盖限流。
 
 > **成本大头在编排层,不在 Pass2 分块数**:逐章命名 ≠ 逐章派 agent,各 subagent 仍守「≤5 章/组」,砍分块数省不到 token 且掉详实度。真正吃 token/时长的四项:①并发撞 529 风暴 ②会话碎片化 re-grounding ③同作者重复联网 ④失败假重跑。以下按此立规,**优化编排、不砍生成深度**。
 
 - **先抽样 1 本人工验收再铺量**:多本任务先完整跑通 1 本(Step0-7 + 浏览器过一遍),你/审校者确认质量与 signature 成立,**通过才铺其余**;通过后**错峰**铺,不齐发。
 - **上站前必过批量交付闸**(见硬门禁④):`verify_batch.py --slugs <预期名单>` exit 0 才许上站；心理学批次追加 `--require-domain psychology`。**预期名单必须显式声明**,靠人肉数「应该都蒸完了吧」正是 2026-07-26 漏掉 2 本仍上站的病因。
-- **跨会话并发闸**:**全局在飞的 Pass2 subagent ≤ 6-8 个**,不论开了几个会话 / 几个作者批次并行。**多作者批次禁同时段并跑 Pass2** —— 多作者通宵并发会直接引爆服务端 529 风暴(大量 agent 撞 529、大量 retry、墙钟拖到 8-9 小时)。批次之间**错峰发起**,别十分钟内齐发。
-- **1 本书 = 1 会话(或每会话 ≤2-3 本)**:避免单会话塞多本反复 compact(实测单会话曾 compact 8 次)。会话续接**只重读小的 `distill.json` checkpoint,禁重读 `book.txt` 全文**(实测 book.txt 曾被重复引用 60-198 次/会话)。
+- **跨会话并发闸**:全局在飞请求取真实通道上限（历史 Pass2 曾用 6–8 路，非通用默认）,不论开了几个会话 / 几个作者批次并行。**多作者批次禁同时段并跑 Pass2** —— 多作者通宵并发会直接引爆服务端 529 风暴(大量 agent 撞 529、大量 retry、墙钟拖到 8-9 小时)。批次之间**错峰发起**,别十分钟内齐发。
+- 按项目隔离书状态，不强制每本另开会话:避免单会话塞多本反复 compact(实测单会话曾 compact 8 次)。会话续接**只重读小的 `distill.json` checkpoint,禁重读 `book.txt` 全文**(实测 book.txt 曾被重复引用 60-198 次/会话)。
 - **批前估 token 预算**:铺量前粗估「N 本 × 每本约 X = 总量」,对照账户周/日用量上限;超则分日/分批跑,**预留撞用量上限的余量**(实测批量铺量曾把账户用量跑爆、被迫中途暂停)。模型与推理预算服从用户授权和所选路线；先减少重复生产与审阅，预算估算基于同类书实测，不沿用“不做 token 节流”的旧批次默认。
 - **失败先核盘再重派(防假重跑)**:agent 报「失败」多为已写盘、只是返回元数据时被限流。重派任何失败 agent 前,**先查 `$DATA/{书目录}/` 下 `_pass2_g*.json` / 产物是否已落盘**:已落盘只对缺章做**定点 gap-fill,禁整组重跑**。fan-out 合并后断言「N 章 narrative 全齐且达标」,只补真缺口(见 `method.md §3.5.5` 合并完整性门禁)。
 - **Pass2 产物统一命名 `_pass2_gN.json` + 合并后清理**:并发多会话易各自即兴命名(曾并存 `_ch_N`/`_pass2_N`/`_pass2_gN`/`_pass2_batchX` 四套),漂移致合并对不齐、掉章。**统一只用 `_pass2_gN.json`**;**合并完整性门禁通过后,主控删本书 `_pass2_g*.json` 中间态**(已 gitignore、已回填 distill,别留到入库/聚合污染目录 -- 2026-07-15 复盘 13 本睡眠书 7 本残留)。见 `method.md §3.5.5` 清理步。
