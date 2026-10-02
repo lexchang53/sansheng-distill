@@ -135,7 +135,7 @@ playwright install chromium
 cp .env.example .env        # then set DISTILL_DATA_DIR (and the video keys if you use the video path)
 ```
 
-Then, in Claude Code, just ask it to distill a book. The pipeline (Step0-Step7) is in [`SKILL.md`](./SKILL.md); each step's details live under [`references/`](./references/).
+Then, in Claude Code, just ask it to distill a book. The pipeline (Step0-Step7) is summarized in [`SKILL.md`](./SKILL.md) and laid out in full in [`references/pipeline-steps.md`](./references/pipeline-steps.md); each step's details live under [`references/`](./references/).
 
 ## Configuration
 

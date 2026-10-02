@@ -115,7 +115,7 @@ schema(distill.json 顶层,Step1 产;下游 Step6 选模板变体 / Step2 按 na
 
 **为什么做正交标签而非第五书型**(四证):① book_type / archetype 是「组织形态」轴、stakes 是「后果」轴,一本书可同属两轴(育儿书 = 工具型 + 高后果),塞进 book_type 枚举会互斥;② 既有正交维度(`source_type` / `pub_year` / `render_profile`)的落法都是「新加顶层键」,不扩 book_type;③ §V.5 明确先例「视频不新增第五型、用 `source_type` 正交」,后果轴照此;④ verify 的 archetype 注册表驱动 tab / 区块取舍,stakes 只该**追加门禁**、不该开关区块。
 
-**驱动什么**:`stakes=high` 激活门禁 **G22**(可执行数字必带 `certainty`,§4.5.16 / §7)+ 硬门禁②的**事实抽检**(SKILL 铁律「不编造」:回原书抽检 ≥5 条数字 + 金句)。`normal` 书不强制 certainty(可选产)。**旧 distill 无 `stakes` = normal**(向后兼容,旧书不必回填,除非要做高后果主题聚合 / StepB)。
+**驱动什么**:`stakes=high` 激活门禁 **G22**(可执行数字必带 `certainty`,§4.5.16 / §7)+ 硬门禁②的**事实抽检**(pipeline-rules.md 铁律「不编造」:回原书抽检 ≥5 条数字 + 金句)。`normal` 书不强制 certainty(可选产)。**旧 distill 无 `stakes` = normal**(向后兼容,旧书不必回填,除非要做高后果主题聚合 / StepB)。
 
 ### 1.6 domain_profile:心理学科学证据轴(v6.2)
 
@@ -268,7 +268,7 @@ xray 餐巾纸是「公式 + 读法段 + 一句话 + 草图」四件套;v1-v3 �
 
 章数多(如 20 章)时按章分组并行:
 
-1. **分组**:按章切组,**每组 ≤5 章**;每组派 1 个 subagent(全 Opus),各拿「本组各章 Pass 1 骨架 + 本组原文切片」。**并发上限**:全局在飞的 Pass2 subagent **≤ 6-8**(批量多本时跨会话统算,见 SKILL `§批量模式` 并发闸),别一次性起满所有组、别多作者同时段并跑(会引爆 529 风暴)。
+1. **分组**:按章切组,**每组 ≤5 章**;每组派 1 个 subagent(全 Opus),各拿「本组各章 Pass 1 骨架 + 本组原文切片」。**并发上限**:全局在飞的 Pass2 subagent **≤ 6-8**(批量多本时跨会话统算,见 pipeline-rules.md `§批量模式` 并发闸),别一次性起满所有组、别多作者同时段并跑(会引爆 529 风暴)。
 2. **组内串行**:subagent 组内逐章写 narrative + excerpts(串行,保上下文连贯),不跳章。
 3. **产物落盘·统一命名(硬)**:每组写 **`$DATA/{书目录}/_pass2_g{N}.json`**(N=组序,连续)。**只用这一套命名**——禁 `_ch_N` / `_pass2_N` / `_pass2_batchX` 等即兴变体(并发多会话命名漂移会致合并对不齐、掉章;复盘曾四套并存)。
 4. **主控合并 + 完整性门禁(硬)**:各组 `_pass2_g*.json` 回填 `distill.json` 对应 `chapters[].no`,主控做:

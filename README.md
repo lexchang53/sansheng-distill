@@ -146,7 +146,7 @@ playwright install chromium
 cp .env.example .env        # 然后填 DISTILL_DATA_DIR(蒸视频再填视频那几个 key)
 ```
 
-然后在 Claude Code 里让它蒸一本书即可。八步管线(Step0-Step7)写在 [`SKILL.md`](./SKILL.md),每步细则在 [`references/`](./references/) 下。
+然后在 Claude Code 里让它蒸一本书即可。八步管线(Step0-Step7)的一览在 [`SKILL.md`](./SKILL.md),完整表在 [`references/pipeline-steps.md`](./references/pipeline-steps.md),每步细则在 [`references/`](./references/) 下。
 
 ## 配置
 

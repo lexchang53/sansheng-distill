@@ -2,7 +2,7 @@
 
 > 适用：蒸馏对象不是「一部作品」，而是「**一个人**」的跨媒介全量语料 -- 视频博主的全部视频 + 专栏/Newsletter + 书 + 播客。
 > 先例（本章程的事实来源）：Dan Koe 项目（2026-07）与 Alex Hormozi 项目（2026-08，第二人，双轨 + 桥接层由它定型）。Dan Koe：162 视频（91.9h）+ 212 Letters + 2 书 25 章 → 399 来源 / 1,836 条观点证据 / 299 观点族 → `sanshengai.top/tools/creator-distill/dan-koe`。项目档案：`Cowork/其他/Dan Koe/`（00 项目管理 / 03 工作数据 / 04 蒸馏成果 / 07 工具），交接文档：`其他\Dan Koe\网站修改交接.md`。
-> 单本书 / 单视频 / 一个视频系列 → 走 SKILL.md 主管线（Step0-7），不看本文件。同一作者「已蒸 ≥2 本书」的聚合 → 走 StepA（author-craft.md）。本路径是从零蒸「一个人」。
+> 单本书 / 单视频 / 一个视频系列 → 走 SKILL.md 主管线（Step0-7，细则 pipeline-steps.md），不看本文件。同一作者「已蒸 ≥2 本书」的聚合 → 走 StepA（aggregation-steps.md + author-craft.md）。本路径是从零蒸「一个人」。
 
 ## 0. 路由判定（进 skill 先分流）
 

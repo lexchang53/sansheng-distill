@@ -31,7 +31,7 @@ if sys.stdout.encoding and sys.stdout.encoding.lower() != "utf-8":
 VERIFY = Path(__file__).with_name("verify_page.py")
 # 通用交付必需产物；psychology 严格批次另强制 book.txt + source-audit.json。
 REQUIRED_ARTIFACTS = ("distill.json", "{slug}.html")
-# 交付卫生:存在即告警(不阻断)。只列 SKILL.md 批量模式**明确要求合并后清理**的中间态 --
+# 交付卫生:存在即告警(不阻断)。只列 references/pipeline-rules.md 批量模式**明确要求合并后清理**的中间态 --
 #   `.bak`(update_index 每次写前自动备份)与 `_verify.png`(Step7 正常产物)都是设计行为,不告警,免得淹没真信号。
 STALE_GLOBS = ("_pass2_g*.json",)
 
@@ -100,7 +100,7 @@ def check_one(root: Path, slug: str, fast: bool, required_domain: str | None = N
         r["warns"].append("无 enrich.json(Step3 联网增补整步没跑;确属抓不到应产 null 键的文件)")
     stale = [f.name for g in STALE_GLOBS for f in d.glob(g)]
     if stale:
-        r["warns"].append(f"中间态残留 {stale[:5]}(合并后应清理,SKILL.md 批量模式)")
+        r["warns"].append(f"中间态残留 {stale[:5]}(合并后应清理,pipeline-rules.md 批量模式)")
     r["ok"] = not r["blockers"]
     r["n_ch"] = n_ch
     return r
