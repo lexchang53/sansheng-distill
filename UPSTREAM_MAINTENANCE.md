@@ -73,7 +73,15 @@ CH_PAT = re.compile(
 
 ### 第三步：驗證並提交推送 (Commit & Push)
 ```bash
-git add scripts/convert_book.py SKILL.md README.md UPSTREAM_MAINTENANCE.md
+git add .
 git commit -m "chore(upgrade): 同步上游最新版本並套用繁體在地化補丁"
 git push origin main
 ```
+
+### 第四步：自動雲端備份至 P 磁碟 (Auto-Backup to P Drive)
+提交並推送到 GitHub 後，**必須自動調用 skills-sync** 進行本機至 P 磁碟的鏡像同步，確保多台電腦無縫銜接：
+```powershell
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.gemini\config\skills\skills-sync\sync-skills.ps1" -Mode Backup -SkillName "sansheng-distill"
+```
+*(升級流程至此全流程閉環完畢)*
+
