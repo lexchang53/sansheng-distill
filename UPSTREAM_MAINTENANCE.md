@@ -2,17 +2,18 @@
 
 > **給 AI 輔助開發者的指示 (Instructions for AI Assistants)**：
 > 當使用者要求「升級 sansheng-distill 到官方最新版」時，**請嚴格依據本文件執行**。
-> 本專案採用「**原生上游核心 + 產物自動後處理繁體化**」架構，**嚴禁**對全庫所有檔案進行批次簡轉繁，**只需維護以下 3 個核心檔案的補丁**。
+> 本專案採用「**原生上游核心 + 產物自動後處理繁體化**」架構，**嚴禁**對全庫所有檔案進行批次簡轉繁，**只需維護以下 4 個核心檔案的補丁與外掛**。
 
 ---
 
-## 📌 繁體台灣在地化關聯檔案清單 (Core Patch Files)
+## 📌 繁體台灣在地化關聯檔案清單 (Core Patch & Extension Files)
 
-本專案中與繁體台灣在地化相關的檔案僅有以下 3 個：
+本專案中與繁體台灣在地化相關的檔案僅有以下 4 個：
 
-1. **`scripts/convert_book.py`**（章節正則繁簡相容補丁）
-2. **`SKILL.md`**（Step7 自動觸發繁體化後處理鐵律）
-3. **`README.md`**（繁體台灣專案說明文件）
+1. **`scripts/postprocess_html.py`**（專屬繁體在地化、雙模自適應流程圖與單一檔案交付外掛腳本）
+2. **`scripts/convert_book.py`**（章節正則繁簡相容補丁）
+3. **`SKILL.md`**（Step7 自動觸發繁體化後處理鐵律）
+4. **`README.md`**（繁體台灣專案說明文件）
 
 ---
 
@@ -62,9 +63,9 @@ CH_PAT = re.compile(
 確保包含以下自動繁體化後處理指令與鐵律說明：
 - **`SKILL.md` description**：包含 `或當使用者要求「更新/升級 sansheng-distill 技能」時...` 觸發指示。
 - **`references/pipeline-steps.md` 表格 Step7 指令**：
-  > 驗證 exit 0 後**自動執行**：`python "C:\Users\lex\.gemini\config\skills\zhconvert\scripts\convert.py" "$DATA/{書目錄}/{slug}.html" --mode "Taiwan" --overwrite` 並確保 html 標籤改為 `<html lang="zh-Hant-TW">`
+  > 驗證 exit 0 後**自動執行**：`python "$SKILL/scripts/postprocess_html.py" "$DATA/{書目錄}/{slug}.html" --distill "$DATA/{書目錄}/distill.json"`，確保全文字繁體化、`<html lang="zh-Hant-TW">`、注入手機版 17px 樣式、因果流程圖雙模響應式切換，並自動重命名為繁體中文書名及清理過渡檔案。
 - **`references/pipeline-rules.md` 下方鐵律 (Iron Law)**：
-  > ⚠ **產出物繁體在地化鐵律**：無論中間過程使用何種模型或內部繁簡格式，最終產出的 HTML 與展示頁面**必須一律經由 zhconvert 自動後處理為符合台灣語境習慣的繁體中文**，並將 `<html lang="zh">` 改為 `<html lang="zh-Hant-TW">`，嚴禁交付殘留簡體字或大陸用語（如：視頻、字段、模塊、信息、默認）之 HTML 產物。
+  > ⚠ **產出物繁體在地化與響應式單一檔案鐵律**：無論中間過程使用何種模型或內部繁簡格式，最終產出的 HTML 與展示頁面**必須一律經由 postprocess_html.py 自動後處理為符合台灣語境習慣的繁體中文**，並將 `<html lang="zh">` 改為 `<html lang="zh-Hant-TW">`，替換為台灣系統字型族列，修正 CSS「怎麼讀:」偽元素與「已讀」動態文字；因果流程圖（Napkin Sketch）必須具備雙模自適應（電腦版雙行折行防遮擋 + 手機版直式單列 17px/15px 強制字體）；最終產物必須重命名為繁體中文書名，**且每個書目錄下僅交付 1 個自適應 HTML 檔案**，嚴禁殘留多個手機過渡檔或簡體大陸用語（如：視頻、字段、模塊、信息、默認）。
 
 #### 3. 保留 `README.md`
 `README.md` 保持本 Fork 的繁體中文說明版本，若有新版本特性，僅在既有繁體架構上追加說明，不隨上游覆蓋。
