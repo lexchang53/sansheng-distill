@@ -10,6 +10,12 @@
   <sub><em>▲ Distilling Yuval Noah Harari's four books into one "collected works" page: thought evolution, concept drift, recurring themes, cross-book links (12s silent loop)</em></sub>
 </p>
 
+## Choose the route before producing
+
+Ordinary new books default to the reader edition: one authoritative text, one effective review, and targeted corrections. Explicit item-level coverage requests use the strict route; overview requests use the guide route. Scientific evidence follows its domain contract. Biographies, creator corpora, person topics, videos, and existing-library aggregation have separate routes. Enterprise research belongs to an enterprise-research capability. Data delivery does not automatically include web pages or promotion.
+
+[SKILL.md](SKILL.md) owns route selection and defaults; [reference-map.md](references/reference-map.md) maps stages to resources. The page examples below apply when a page is requested.
+
 ## What it is
 
 Feed it a book (`.epub` / `.pdf` / `.txt` / `.azw3` / `.mobi`), or a set of videos, and it runs a multi-step pipeline that produces **one self-contained HTML page you can just double-click open** -- no network, no server, one file is everything. If the target is a historical person rather than one work, it routes to `biography_corpus` and produces a structured store in which sources, observations, decisions, canonical facts, disputes, and external verifications remain traceable to each other.
@@ -122,7 +128,7 @@ How you update depends on how you installed:
 - **Via the plugin marketplace**: `claude plugin marketplace update`, then `claude plugin update sansheng-distill`
 - **Via clone + symlink**: `git pull` in the repo -- the symlink picks it up immediately, no reinstall
 
-To hear about new versions: watch the repo's [Releases](../../releases), or click **Watch -> Custom -> Releases** and GitHub will notify you. See the [CHANGELOG](CHANGELOG.md) for what changed in each version.
+To hear about new versions: watch the repo's [Releases](https://github.com/sanshengai/sansheng-distill/releases), or click **Watch -> Custom -> Releases** and GitHub will notify you. See the [CHANGELOG](CHANGELOG.md) for what changed in each version.
 
 ## Quick start
 
@@ -135,7 +141,7 @@ playwright install chromium
 cp .env.example .env        # then set DISTILL_DATA_DIR (and the video keys if you use the video path)
 ```
 
-Then, in Claude Code, just ask it to distill a book. The pipeline (Step0-Step7) is in [`SKILL.md`](./SKILL.md); each step's details live under [`references/`](./references/).
+Then, in Claude Code, just ask it to distill a book. Choose the route first. The guide/video pipeline (Step0-Step7) is routed from [`SKILL.md`](./SKILL.md) and laid out in full in [`references/pipeline-steps.md`](./references/pipeline-steps.md); each step's details live under [`references/`](./references/).
 
 ## Configuration
 

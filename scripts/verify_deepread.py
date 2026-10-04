@@ -93,8 +93,8 @@ def cn_len(text):
 
 def check(entry_id, draft_text=None):
     pack = load_pack(entry_id)
-    if pack is None:
-        return [("pack", "料包不存在")]
+    if pack is None or not pack.strip():
+        return [("pack", "料包不存在或为空")]
     path = os.path.join(DRAFTS, "%s.md" % entry_id)
     if draft_text is None:
         if not os.path.exists(path):
@@ -193,10 +193,11 @@ def main():
     if args:
         ids = args
     else:
-        ids = sorted(f[:-3] for f in os.listdir(DRAFTS)) if os.path.isdir(DRAFTS) else []
+        ids = sorted(f[:-3] for f in os.listdir(DRAFTS)
+                     if f.endswith(".md") and os.path.isfile(os.path.join(DRAFTS, f))) if os.path.isdir(DRAFTS) else []
     if not ids:
-        print("没有可校验的初稿")
-        return
+        print("没有可校验的初稿", file=sys.stderr)
+        sys.exit(1)
 
     bad = warned = 0
     for eid in ids:

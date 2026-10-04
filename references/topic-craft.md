@@ -3,6 +3,8 @@
 > 只有为**同一主题下 ≥3 本已蒸作品**做横向聚合时读本节。单书蒸馏、双书均不涉及。对称 `author-craft.md`(StepA 作者演变),但换一根轴。
 > **单一权威**:topic.json / 4 个核心视图 + 独立平行对照 / topic.enrich 的字段名以本文件为准,下游(build_topic.py / topic-page-skeleton.html / verify_page.py)一律对齐。
 
+类别全景与书目入口另见 [category-framework.md](category-framework.md)；本文件仍只定义问题专题。类别入口不扩充 `topic.json` 为学科百科，也不改写现役 `schools` 字段契约。
+
 ## 0. 定位与铁律
 
 - **StepA vs StepB 的轴不同**:StepA 聚合「同一**作者**的思想**演变**」(时间轴,谁先谁后怎么变);StepB 聚合「同一**主题**下各书的**立场光谱与分歧**」(空间轴,谁和谁在同一议题上站哪边)。**不照搬四视图,是对称迁移** -- 主题侧的 4 个核心视图 = 分类地图 / 分歧矩阵 / 维度对照表 / 书目导航;只有编辑显式声明时,另加不计入分歧数的平行对照。

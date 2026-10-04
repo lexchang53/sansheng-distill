@@ -1,203 +1,57 @@
 ---
 name: sansheng-distill
-description: Use when 用户要把一本书全文、单个视频（按 1 集）、YouTube/B站视频系列、一个创作者的全部作品，或历史人物的生平材料做成可追溯的深度蒸馏资料；或當使用者要求「更新/升級 sansheng-distill 技能」時（此時必須先閱讀 UPSTREAM_MAINTENANCE.md 執行標準升級流程）。触发词：蒸馏这本书、拆书、蒸馏视频、视频系列蒸馏、蒸馏 UP 主、人物思想蒸馏、人物传记证据库、历史人物事实核验、传记事实入库、更新sansheng-distill、升級sansheng-distill、升級蒸餾技能。只要字幕摘要、单篇文章写作时不用此 Skill；制作「一页」产品或网站时，本 Skill 只负责公共资料与证据契约，产品规则交给 sansheng-yiye、页面工程与发布交给 sandy-website。
+description: 将书籍、单集或系列视频、创作者作品、人物生平或人物专题蒸馏成有来源的可读资料；也处理已蒸书库的作者、问题专题与类别聚合。企业研究交给企业研究能力，本 Skill 承接其中的书籍/人物资料子任务。只要字幕摘要、普通单篇文章或页面工程时不触发。或當使用者要求「更新/升級 sansheng-distill 技能」時（此時必須先閱讀 UPSTREAM_MAINTENANCE.md 執行標準升級流程）。觸發詞：蒸餾這本書、拆書、蒸餾影片、影片系列蒸餾、更新sansheng-distill、升級sansheng-distill、升級蒸餾技能。
 ---
 
-# sansheng-distill -- 书籍/视频蒸馏引擎(v3 浏览型)
+# 蒸馏：识别对象，按需加载，复用已有成果
 
-输入一本书的电子全文(或一组视频),跑完 Step0-Step7 管线(Step2 分两遍),产出一个可 `file://` 直开的**单文件交互 HTML 蒸馏页**。
+交付忠实、可回查的阅读资料与结构化数据。默认效率优先：一条生产路线、一套权威正文、有限审阅、定点修复；不为凑流程重蒸。书页、人物库、专题资料的格式由所选路线和实际消费者决定。
 
-**v3 页型 = 浏览型「凝练地图 + 详实正文 + 批判证据 + 页内二级视图」**,5 个 tab 按读者逻辑链组织(① 全书速览 → ② 逐章精读 → ③ 批判与评价 → ④ 行动清单 → ⑤ 延伸阅读);交互层:脑图可点跳章节、章节手风琴多开(目录态默认收起)、两张页内全屏子视图(hash 路由开合)、多主题换肤。每 tab 具体装什么、字段与心理学科学证据层的槽位规格,详见 `references/html-spec.md` §1/§1.1(权威契约,T5 骨架逐字对齐)。
+## 1. 先识别本轮任务
 
-**这是入口编排文件。** 先读本文对齐管线,再在每一步按下表**读对应 reference / 跑对应 script**;references 是各步的执行细则,不要凭记忆做。
+从用户意图与已有材料判断三个维度，简短记录即可，不另造通用 JSON：
 
-**书籍默认路线（蒸馏任何一本书都先读）**：先按 [high-retention-books.md](references/high-retention-books.md) §0 定档并做来源完整性预检；**深读档**（核心经典）按 §0.3 固定顺序「来源放行 → 冻结知识分母 → 写深读 → 全句事实审计并裁决 → 逐项覆盖检查 → 连续阅读验收 → 签署放行」执行，默认比例、排除项、审阅预算见 §0.2/§0.4，写法与跨书去重见 §5.1，不再逐本与用户商量；**导读档**走下表 Step0–Step7。多本并行时再读 [book-batch-operations.md](references/book-batch-operations.md)，按当期项目配置选择并实测模型车道，不把历史批次的套餐或并发数当默认。`scripts/book_coverage.py` 的数据门与 Step7 实际页面门分别通过，不能以字数比、模型自评或 JSON 齐备代替。项目若提供深读装配工具和运行手册，以项目当前版本为准；本仓保留通用证据契约与来源预检工具。
+- **对象**：单部作品 / 创作者思想 / 人物生平事实 / 企业 / 已蒸书库。
+- **范围**：全书或全生涯 / 明确专题或时段 / 单集或系列 / 已有成果的局部更新。
+- **终点**：资料或数据 / 本地页面 / 已授权的产品交付。讨论、体检、查错只做到本轮终点。
 
-## 先分流：蒸馏对象 → 路径
+分析目的先于媒介和学科：一本人物传记作为独立书蒸馏仍是书籍；多本传记用来复原生平才是人物库；管理学/心理学是书籍的领域附加规则，不是重复的主流程。已有数据优先增量复用。只有关键意图无法从上下文推断且会显著扩大工作时才问；范围、样式等低风险缺项用现有约定。
 
-| 蒸馏对象 | 走路径 |
-|---|---|
-| 一本书全文 | 先按 high-retention-books.md §0 定档；深读档走该文 §0.3，导读档走主管线 Step0-B（下表） |
-| 单个视频（按 1 集）/ 一个视频系列 | 主管线 Step0-V（下表） |
-| **一个博主/人物的全部作品（跨媒介思想蒸馏）** | **StepC · creator_corpus 路径（`references/creator-craft.md`）** |
-| **一个历史人物的生平、作品、关系、争议与引语（证据型传记）** | **Biography · biography_corpus 路径（`references/biography-craft.md`）** |
+| 意图 / 识别线索 | 主路线 | 首次只读 |
+|---|---|---|
+| “蒸馏这本书”，保留全书主要论证 | **book-reader**：普通新书默认完整读者版 | [reader-edition-books.md](references/reader-edition-books.md) §1–§2；后续按阶段读 |
+| 明确逐项审计、严格深读、精确覆盖；现有严格书续跑 | **book-strict**：严格知识分母与签署 | 新任务读 [high-retention-books.md](references/high-retention-books.md) §0；续跑先读当前阶段与 §6 变更契约 |
+| 明确只要导读、概览、低成本浏览页 | **book-guide**：导读主管线 | [pipeline-steps.md](references/pipeline-steps.md) 对应行 + [pipeline-rules.md](references/pipeline-rules.md) 适用门 |
+| 单个视频、播放列表、课程合集，目标是这些作品的内容 | **video-series**：单集是单成员系列 | pipeline-steps.md 的 Step0-V；[method.md](references/method.md) §V.0 |
+| 博主/思想家的作品体系、全部输出、思想演变 | **creator_corpus**：跨媒介观点族 | [creator-craft.md](references/creator-craft.md) §0–§3 |
+| 生平、人生经历、关系、历史事件、引语证据库 | **biography_corpus**：生平叙事与证据 | [biography-craft.md](references/biography-craft.md) §0–§1 |
+| 某人的“领导力/教育思想”等专题、某一时段或问题 | **person-topic**：限定范围，区分思想与史实 | [person-topics.md](references/person-topics.md)；不自动采集全人生/全部作品 |
+| 已蒸同作者 ≥2 本的思想演变；同问题 比较（正式主题页须 ≥3 本；两书可交比较资料） | **aggregate-author / aggregate-topic**：只聚合已有资料 | [aggregation-steps.md](references/aggregation-steps.md) 对应 StepA 或 StepB |
+| 心理学/管理学等类别全景、书目与空白 | **category-map**：类别导航 | [category-framework.md](references/category-framework.md) |
+| 企业档案、经营机制、财务、控制权或企业现状 | **企业研究**主导；子任务分别返回上述路线 | 当前环境有 `sandy-firms` 时转企业研究入口；没有时按其已有项目契约处理，不冒充本 Skill 能独立完成企业研究 |
 
-判断口诀：分析单位是「作品」→ 主管线；分析单位是「一个创作者自己的思想输出」→ StepC；分析单位是「一个人的历史生平及其证据」→ `biography_corpus`。StepA/StepB 是主管线的可选聚合步，与后两条人物路径不冲突。
+“蒸馏这个人”先看目标是思想还是人生；目标未明且缺上下文时再澄清。“人物专题”优先于“人物全量”，“已蒸聚合”优先于“从零采集”。不因作者身份自动创建人物库。
 
-> **人物路径边界**：`creator_corpus` 归并一个创作者跨媒介表达出的观点族，回答「他的思想体系是什么、如何变化」；`biography_corpus` 汇合多来源的史实观察、分歧与外部核验，回答「发生过什么、证据在哪里、哪些仍有争议」。把传记做成「一页」产品、网站页面、SEO 或正式部署属于下游产品与工程，不在本 Skill 内实现。
+人物全传默认以出版传记为依据，保留连续故事并融合补充材料的独有细节；不设默认硬性字数配额。稿件阅读检查遗漏、重复、无据增写和接续，普通出版事实不逐条外查；篇幅要求与补查边界按 biography-craft.md §0 执行。
 
-> 🪶 **用轻量模型 / 弱 agent 跑本 skill(如 Gemini Flash 级、Antigravity 客户端)→ 先读 `references/flash-mode.md`。**
-> 那份卡不降低任何质量标准,只把「靠自觉」的环节换成「可自检的判据」,并钉死六个最容易滑落的点。
-> Opus / Sonnet 级模型照本文主管线走即可,不必读。
+## 2. 渐进式披露与效率默认
 
-## 路径与变量约定(全文只定义一次)
+1. **选一路**：读取上表命中的首读资料；严格深读、读者版、导读三者互斥。本次普通书效率默认已经成立，无需逐书重新申请；明确档位与现有在制书契约优先。
+2. **选当前阶段**：先定位相关标题/字段，再读对应段；长文不整份灌入。各阶段条件导航见 [reference-map.md](references/reference-map.md)，只在查找资源时打开。
+3. **复用与停止**：相同来源、正文和依赖版本的有效证据直接复用。一轮有效审核后只修实质错误并复核变化；发现系统性错误才扩大审查。预算未知不编数字，成本记录和批量调度仅在需要时读 [book-batch-operations.md](references/book-batch-operations.md)。
+4. **附加规则按条件加载**：心理学科学支持另读 [enrich.md](references/enrich.md) §1.1 和 [source-audit.md](references/source-audit.md)，读者版再读其 §3/§5；替换正式旧书读 [redistillation.md](references/redistillation.md)；仍有知识分母的管理流水线要提效才读 [efficient-book-distillation.md](references/efficient-book-distillation.md)。
+5. **到消费者才验收**：只有制作页面才加载 HTML/设计/品牌参考；只有批量页面交付才跑批量验收。只交资料不强制造 HTML、10 份网站 JSON 或推广文章。实现尚不支持目标格式时做明确适配并验证，不伪造旧契约回执。
 
-| 占位符 | 展开为 |
-|---|---|
-| `$SKILL` | 本 skill 目录(安装后为 `~/.claude/skills/sansheng-distill`) |
-| `$DATA` | 书数据根目录,由环境变量 `DISTILL_DATA_DIR` 指定(默认 `./distill-data`) |
-| `{slug}` | 书的 ASCII kebab 短名(如 `jinqian-xinlixue`);全站唯一,别撞投资 `NN`/育儿 `pNN` |
-| `{书目录}` | 本书数据目录,**纯 `{slug}`**(如 `jinqian-xinlixue`);不含书名,避免中文目录名、git/Windows 友好 |
+模型能力不决定档位。轻量模型需要执行卡时读 [flash-mode.md](references/flash-mode.md)，仅用于导读/视频的相关步骤；模型、并发与子 Agent 由真实环境和任务收益决定，不固定某供应商，也不默认每阶段新开 Agent。
 
-命令里的占位符替成实值再执行。单书目录首次运行 Step0 时自动建。
+## 3. 共用底线与完成定义
 
-## 数据目录约定(单书产物布局)
+- 来源缺页、乱码、章界不清或关键转写不可用，先修来源；不凭记忆编补。区分原书观点、编辑推断、外部事实与当前科学裁决。
+- 保留主论证、关键案例、反例、条件和实质图表。效率取舍可省重复审阅与次要例子，不能省核心意思、真实归属、关键数字和必要图意。
+- 引文回源，外部信息带真实出处；版本变化使受影响审据失效。未外查记未外查，估计不冒称逐项覆盖，机械通过不冒称语义或科学正确。
+- 精确机器契约以实际 schema、校验器与消费者为准。规则分工：本文负责路由与默认；路线参考负责流程；脚本负责其实际检查范围。冲突先查输入与实现，不降阈值、不删除检查凑绿。
+- 交付报告实际范围、采用路线、验证结果、关键缺口。页面交付需实际页面及必要截图验收；上线须既有授权和真实发布成功，数据完成不等于上线。
 
-```
-$DATA/
-  knowledge-index.json          # 跨书概念索引(全库共享,Step4 维护,自动 .bak)
-  {书目录}/
-    book.txt                    # 全文(书=Step0-B;视频=Step0-V 组装的转写语料)  -- gitignore
-    diagnose.json               # 入书诊断(书=Step0-B;视频=Step0-V 的 video_series 变体)
-    raw/                        # 仅视频:各集原始转写 srt/txt(Step0-V)             -- gitignore
-    series-input.json           # 仅视频:手写 manifest(Step0-V 输入)
-    series.json                 # 仅视频:规范化 manifest(Step0-V 产物,下游只读它)
-    comments.json               # 仅视频:观众评论(Step0-V,供 Step3 enrich.reviews)
-    distill.json                # 蒸馏主对象 v2(Step2 两遍产:Pass1 骨架 + Pass2 narrative/excerpts)
-    _pass2_g*.json              # Pass2 分块中间态(长书按章 fan-out 各组产物,合并回 distill) -- gitignore
-    enrich.json                 # 联网增补 v2.1(五个基础键;心理学书加 evidence_page 科学证据层)
-    claim-coverage.json         # 仅心理学:Pass1 待审计项到最终 claim 的裁决表
-    source-audit.json           # 仅心理学:原文分段、逐项来源记录与四输入 hash
-    index-merge.json            # 5-tag 合并清单(Step4 中间产物)
-    {slug}.html                 # 单文件交互蒸馏页(Step6 产物,最终交付,≤3MB;真封面 base64 内联,无独立 cover 文件)
-    _verify.png                 # Step7 验证全页截图                                  -- gitignore
-```
+「一页课桌」产品规则由 `sandy-yiye` 承接，站点工程与发布由 `sandy-website` 承接；本 Skill 交付公共资料与证据。没有这些能力的环境沿当前项目契约，不自动新增产品或外发。
 
-> gitignore(建议在数据目录加 `.gitignore`):`book.txt` / `raw/` / `_verify.png` / `_pass2_*.json` / `*.bak` 不入库(版权原文 / 临时产物);其余(distill / enrich / HTML / index-merge / series / comments / diagnose;心理学另含 claim-coverage / source-audit)可入库。
-
----
-
-## 管线表(Step0-Step7,Step2 分两遍)
-
-每一步:**做什么 / 读哪个 reference / 跑哪条命令 / 产物 / 失败降级**。逐步照做,上一步产物是下一步输入。
-
-| 步 | 做什么 | 读哪个 reference | 跑哪条命令 | 产物 | 失败降级 |
-|---|---|---|---|---|---|
-| **Step0-B** 入书诊断 + 转 txt(蒸**书**走此行) | 电子书 → 全文 txt + 诊断(格式/可提取/扫描版/乱码率/目录识别) | 脚本自足;分流规则见 `method.md §0` | `python $SKILL/scripts/convert_book.py "<书文件>" --outdir "$DATA/{书目录}"`(重转加 `--force`)。**套装/合集 epub**:先 `--list-volumes` 列分册,再逐本 `--volume "<分册名>"` 切(按 TOC 顶层 + spine 区间,不漏未列入目录的正文续页);**分册重名**(如三册都叫「目录」)时 `--volume` 会报错列出候选下标,改用 `--volume-index <下标>` | `book.txt` / `diagnose.json` | exit 2 = 缺依赖/格式不支持/拒覆盖 → 装 calibre(azw3·mobi)或补 pip 依赖或加 `--force`;**exit 3 = 暂停该来源的正文生产，按硬门禁①核原件、换本或 OCR，不硬读、不编内容** |
-| **Step0-V** 视频系列入库(蒸**视频**走此行) | 每个视频取材转写 → 手写 manifest → 组装语料 + 抓评论。章节=集数 | **`method.md §V.0`(取材 cascade,固定流程,先读)** + `§V`。分流:YouTube 优先抓字幕(**认准人工字幕**,`video-to-subtitle-summary`)/ 无字幕或需画面语义 → Gemini 原生在线(`claude-gemini-video`,免下载)/ 非 YouTube 先下载再解析 | ① 按 §V.0 取每视频**干净转写**(YouTube 人工字幕 `subtitle.{lang}.vtt` 可直喂 build_series;⚠️ 别用滚动重复 3× 的 `text.txt`/自动字幕),存 `$DATA/{书目录}/raw/{NN}_{id}/`;② 手写 `series-input.json`(`transcript` 指向选定的**干净**字幕文件);③ `python $SKILL/scripts/build_series.py --manifest "<series-input.json>" --outdir "$DATA/{书目录}"`;④ `python $SKILL/scripts/fetch_comments.py --series "$DATA/{书目录}/series.json" --out "$DATA/{书目录}/comments.json"`;⑤ 逐条 `yt-dlp --skip-download --print` 抓热度元数据(播放/赞/评论数/日期,供热度条;`--flat-playlist` 拿不到须逐条 full extract) | `book.txt` / `series.json` / `diagnose.json` / `comments.json` | build exit 3 = 全部视频缺转写/乱码 → 按硬门禁①核 manifest 和可用字幕，仍无可靠语料则报告缺口；fetch exit 2 = 全失败或抖音不支持 → 评论整块降级(enrich.reviews 置 null),不阻塞蒸馏 |
-| **Step1** 书型 + 领域判定 | 读诊断 + 全书抽样(首/中/末章),判书型、stakes;心理学书另写 `domain_profile` | `method.md §1` | 无(读 `diagnose.json` + `book.txt` 抽样) | `book_type/stakes/domain_profile?`(写入 distill.json) | 边界模糊按 §1.2 顺序裁决;`domain_profile` 不确定则不冒标,一旦标 psychology 就激活 G23/G24 |
-| **Step2·Pass1** 压缩骨架(凝练地图) | 三轮认知压缩 + 四嫁接件 + v2/v4 延展字段 + 逐条补锚点与原书转述状态;心理学 core_ideas/decision_rules 逐条补唯一 claim_id + claim_type | `method.md §2-§5`(心理学另读 §1.6/§4.5.17) | 无(内化方法蒸馏,产出 JSON) | `distill.json` 骨架层(**除 `chapters[].narrative`/`.excerpts` 外全部字段**) | diagnose=分组蒸馏 → 走 `method.md §8`;产出后过 §7 门禁 G1-G23(条件门按 stakes/domain 激活) |
-| **Step2·深读重述层**(可选,书要「六到七成留在网页」时) | 按原书节切 → `deep_retell.py split/build` → 方舟 glm-5.3 起稿 → `collect` 机检(30 字雷同 / 数字有据 / 引文逐字)→ `rewrite` 两轮 → `render` 三层折叠页;旁证从企业研究包 claims 叠加 | **`method.md §3.7`**(2026-09-22 两本试点定;单位、写法、改写线、模型、版权) | `python3 $SKILL/scripts/deep_retell.py split <书目录> --mode toc-cn\|vertical [--claims …]` → `build --book … --author …` → runner(`--gateway agent --model glm-5.3`)→ `collect --out-dir …` → `rewrite` → `render` | `deepread.json` / `deepread-pilot.html` | 长度比不是覆盖率(第三方引文被压掉是对的);雷同残余只剩专名清单 / 口号就停;非逐字引文一律置空 |
-| **Step2·Pass2** 详实转述(详实正文) | 逐章两级检索(先读 Pass1 骨架保结构,再回 book.txt 该章原文 grep 案例/数字/原话保血肉)→ 讲书稿式 narrative(坡道开场 → 观点+完整案例故事+数据 → 一句接主线)+ 挑 excerpts。**长书按章 fan-out 并行**(每组≤5 章派 1 subagent 全 Opus,组内串行,主控合并) | `method.md §3.5`(两级检索 / 讲书稿模板 / 版权线 / fan-out) | 无(内化;长书分组各产 `_pass2_g*.json` 中间态,主控回填 distill.json) | 回填 `distill.json` 的 `chapters[].narrative`(书 800-1500 字/章·视频段 ≥400；**文章选编**设 `render_profile.archetype="文章选编"`，逐篇 ≥300 字)+ `chapters[].excerpts`(书每章 ≥1,原文 ≤150 字) | grep 不到支撑就降级不写该点,**禁凭印象编案例/编数字**；读者可见 narrative 禁写“蒸馏/审计/后续出版”等工作流元话语，禁用同章重复句凑字数；主控做 G9 / G14 机械核对 + **标志性案例保全抽检**(招牌故事必须整段完整出现,不得压成标签) |
-| **Step3** 联网增补(页内子视图 + 内联) | 产五个基础块;心理学书再逐 claim 查元分析/复制研究/官方勘误,产 `evidence_page`,并在最终 distill/enrich 定稿后封存原文审计账本 | `enrich.md`(§1.1 科学证据契约 + §3 搜索 pass;视频看 §V);心理学另读 `source-audit.md` | 联网检索按 §3.4 路由只选一个引擎;心理学学术检索走 Tavily且只采一手论文/官方材料;按 source-audit schema 生成 claim coverage + audit | 普通书五键;心理学书第六键 `evidence_page` + `claim-coverage.json` + `source-audit.json` | 基础块可据实置 null;心理学 evidence_page/审计账本不可整块降级,证据不足须标低置信/not_testable 仍全量覆盖 |
-| **Step4** 跨书索引登记 + 互链 | `distill.concepts` 逐个与现有索引语义匹配,赋 5-tag(SUPPORTS/REFINES/CONTRADICTS/NEW_SUB_ASPECT/NEW_CONCEPT),登记本书 entry + 渲染 ⑤ M11 已蒸书互链 | `cross-book.md`(§2 精确四步 + §3 tag 判定) | ① `python $SKILL/scripts/update_index.py query --index "$DATA/knowledge-index.json" --names-only` → ② 写 `index-merge.json` → ③ `... register --index "$DATA/knowledge-index.json" --merge "$DATA/{书目录}/index-merge.json" --dry-run`(exit 0)→ ④ 去 `--dry-run` 真跑 | `index-merge.json` / 更新 `knowledge-index.json`(+.bak) / M11 互链数据 | register exit 1 = 校验错 → 按 stderr 逐条修 `index-merge.json` 回 ③ 重校验(**禁用 `--force` 绕 exit 1**);exit 2 = 同书 slug 冲突 → 确为重蒸才加 `--force`,slug 撞车则换唯一 slug |
-| **Step5** 设计两遍工作法 | 为这本书出 token plan + signature 决策,过对抗自审;品牌锁八成、书魂放两成 | `design-craft.md`(两遍工作法)+ `brand-tokens.md`(主题 token 契约) | 无(设计决策,内化到 Step6 填槽) | token/signature 定调(不落独立文件,直接指导 Step6) | signature 命中反 slop 黑名单(蓝紫渐变/emoji 图标/圆角+左边框卡滥用/凑数数据)→ 改;衬线模式必配 CJK 衬线兜底 |
-| **Step6** 生成单文件 HTML | 复制骨架填五 tab + 两张页内子视图;删净 dummy;心理学书保留并填 `J-PSYCH-EVIDENCE`,普通书整段删 | `html-spec.md`(§1 区块规格 / §1.2.3 心理学证据 / §3 生成 / §5 体积) | 复制 `$SKILL/templates/page-skeleton.html` 到 `$DATA/{书目录}/{slug}.html` 后逐槽填充(vendor 已内联,勿动) | `$DATA/{书目录}/{slug}.html`(单文件,**≤3MB**) | 超体积先删 dummy 再压 excerpts/封面;禁删必需块、data-source 或心理学 G24 三栏 |
-| **Step7** 出厂验证 v2 + 台灣在地化後處理 | 静态 lint + 原文事实门禁 + Playwright 冒烟 + G1-G24 条件契约。验证通过后**必须自動調用 zhconvert** 將 HTML 轉為繁體台灣語境，並修正語系為 `<html lang="zh-Hant-TW">` | `html-spec.md §3` + `method.md §7` + `enrich.md §1.1` + `source-audit.md` | 通用:`python $SKILL/scripts/verify_page.py "$DATA/{书目录}/{slug}.html" --distill "$DATA/{书目录}/distill.json" --source "$DATA/{书目录}/book.txt" --screenshot "$DATA/{书目录}/_verify.png"`;**已知心理学批次必须追加 `--require-domain psychology`**; 驗證 exit 0 後**自動執行**:`python "C:\Users\lex\.gemini\config\skills\zhconvert\scripts\convert.py" "$DATA/{书目录}/{slug}.html" --mode "Taiwan" --overwrite` 並確保 html 標籤改為 `<html lang="zh-Hant-TW">` | 退出码 0 + 台灣在地化繁體 HTML (`{slug}.html`) + `_verify.png` | exit 0 才算完成;產出物必須為純繁體台灣用語 |
-
-> ⚠ **视频路径 v2 尚未跑 E2E 验证**:骨架 / `method.md §V` / `html-spec.md §V` / `enrich.md §V` / `verify_page.py` 的视频分支已随 v2 更新到位,但尚未用视频样本完整重蒸验收(书样本《金钱心理学》已 E2E 通过)。蒸视频系列时按 §V 照做,遇到骨架/门禁与视频不吻合的坑先记录再修。
-> 跑判成败的脚本别用 `\| tail` / `\| head` 取摘要(管道退出码取最后一段,`tail` 永远成功会吞失败);看完整结尾行或补 `; echo "退出码=$?"`。
-> ⚠ **產出物繁體在地化鐵律**：無論中間過程使用何種模型或內部繁簡格式，最終產出的 HTML 與展示頁面**必須一律經由 zhconvert 自動後處理為符合台灣語境習慣的繁體中文**，並將 `<html lang="zh">` 改為 `<html lang="zh-Hant-TW">`，嚴禁交付殘留簡體字或大陸用語（如：視頻、字段、模塊、信息、默認）之 HTML 產物。
-
-> ⚠ Step6 必须保留正式 page-skeleton.html 的完整结构与交互。可以直接填骨架，或使用明确支持“已验收成品页作为结构参考”的渲染器；两类输入不能混用。成品参考页中所有书籍数据槽必须重新投影，不能残留旧书公式、作者或隐藏子视图。严禁另起极简 HTML 壳，或删掉 theme-picker、initMindmap()、initHashRouter()；合成路由测试也不能替代实际书页的 Step7 与截图验收。
-
-## StepA · 作者演变聚合(可选,同一作者 ≥2 部已蒸时)
-
-某作者在 `$DATA` 下已蒸 **≥2 部**作品时,可选做「思想演变专题」聚合页;单书蒸馏不涉及,**<2 部不生成**。
-
-- **做什么**:只读各书 `distill.json`(**绝不重蒸**)聚合成 `author.json` → 渲染作者演变页 `author.html`(4 视图:时间线 / 母题 ribbon / 思想转向 / 概念演化图)。每书蒸馏页顶部「演变入口卡」(SLOT:AUTHOR-ENTRY)链到它。
-- **读哪个 reference**:`author-craft.md`(§0 事实 vs 叙事铁律 / §2 author.json schema / §4 四视图数据契约 / §5 板块骨架 / §6 转向证伪层 / §7 入口卡)。
-- **跑哪条命令**:`python $SKILL/scripts/build_author.py --author "<作者名>" --data-root "$DATA" --manual "$DATA/authors/{author_slug}/author.manual.json" --enrich "$DATA/authors/{author_slug}/author.enrich.json" --out "$DATA/authors/{author_slug}/author.json"`(已有 author.json 且 manual 缺失时防覆盖栏拒跑,确需重建加 `--force`;<2 部 exit 3 不生成);再复制 `templates/author-page-skeleton.html`、把 `#author-data` 槽替换为该 `author.json` 生成 `author.html`。
-- **产物**:`$DATA/authors/{author_slug}/author.json` + `author.html`。
-- **显式成员与站内书页**:需纳入合著作品或固定策展边界时,在 manual 写 `member_slugs:[slug]`;清单中任一成员缺失、损坏或内部 slug 不一致即 exit 2,不得静默缩小集合。可在 `book_meta.{slug}.web_url` 写站内根相对书页路径(如 `/library/work-a.html`);只接受安全的单 `/` 起始路径,非法值不进入产物。
-- **触发门槛 / 降级**:该作者 <2 部已蒸 → `build_author.py` exit 3 不生成、连网搜(enrich)不启、每书页入口卡整卡删。
-- **出厂验证**:`python $SKILL/scripts/verify_page.py "$DATA/authors/{author_slug}/author.html"; echo "退出码=$?"`(自动识别作者页走独立门禁:4 视图齐 / 零外链 / Zero-Hex / lang=zh / 破折号 / slug 与 `web_url` 安全 / 转向 verdict 一致;exit 0 才算完成)。
-
-## StepB · 主题聚合(可选,同主题 ≥3 本已蒸时)
-
-同一主题下已蒸 **≥3 本**作品时,可选做「主题聚合专题」页 -- 把各书按流派归类、把分歧摆上台面、把可执行数字并排对照。单书/双书不涉及,**<3 本不生成**。StepA 聚合「同一**作者**的思想**演变**」(时间轴);StepB 聚合「同一**主题**下各书的**立场光谱与分歧**」(空间轴),对称迁移非照搬四视图。
-
-- **做什么**:只读各书 `distill.json` + `knowledge-index.json`(**绝不重蒸**)聚合成 `topic.json` → 渲染主题聚合页 `topic.html`(4 视图:分类地图 / 分歧矩阵 / 维度对照表 / 书目导航)。每成员书蒸馏页顶部「主题入口卡」(SLOT:TOPIC-ENTRY)链到它。
-- **读哪个 reference**:`topic-craft.md`(§0 事实 vs 归纳分层铁律 + 成员圈定 / §2 topic.json schema / §4 四视图数据契约 / §5 板块骨架 / §6 外部争议 enrich / §7 入口卡)。
-- **跑哪条命令**:先手写 `$DATA/topics/{topic_slug}/topic.manual.json`(圈定 `members:[slug]` + schools 流派归类 + disputes 分歧分组 + dimensions 维度对照 + verdict 怎么选);再 `python $SKILL/scripts/build_topic.py --topic "<主题名>" --data-root "$DATA" --manual "$DATA/topics/{topic_slug}/topic.manual.json" --out "$DATA/topics/{topic_slug}/topic.json"`(已有 topic.json 且 manual 缺失时防覆盖栏拒跑,确需重建加 `--force`;<3 本 exit 3 不生成);再复制 `templates/topic-page-skeleton.html`、把 `#topic-data` 槽替换为该 `topic.json` 生成 `topic.html`。
-- **产物**:`$DATA/topics/{topic_slug}/topic.json` + `topic.html`。
-- **成员圈定 = manual 显式列 slugs**:主题边界是编辑判断,不改 distill schema、不自动按 tag 归堆(见 topic-craft §0);清单中任一成员缺失、损坏或内部 slug 不一致即 exit 2,不得静默缩小集合。`book_meta.{slug}.web_url` 与 StepA 同样只允许安全的站内根相对路径。
-- **分歧与平行对照分流**:分歧矩阵只渲 `CONTRADICTS`(knowledge-index 已登记真对立,红旗)和 `curated`(编者归纳、金标,`note` 须给依据)。相关但不互斥、回答不同层次问题的材料写入独立 `parallel_comparisons[]`,至少两列且每列均有可回指成员与非空 `stance`,渲染为 `.cmp-card`,不计入分歧数;旧 manual 的 `disputes[].parallel:true` 会迁移到该独立数组。未显式声明、仅被算法判为 `parallel` 的松散并列仍剔除不渲。**编者归纳出 index 未登记的真分歧轴时,应回补进 knowledge-index**。
-- **触发门槛 / 降级**:有效成员 <3 → `build_topic.py` exit 3 不生成、每书页入口卡整卡删;`external_debate` 整块搜空 → 该板块隐藏,分类/分歧/维度作书内事实照发。
-- **出厂验证**:`python $SKILL/scripts/verify_page.py "$DATA/topics/{topic_slug}/topic.html"; echo "退出码=$?"`(自动识别主题页走独立门禁:4 视图齐 / 零外链 / Zero-Hex / lang=zh / 破折号 / slug 与 `web_url` 安全 / index_relation + certainty 枚举 / 分歧与平行对照可回指 / `.dsp-card`、`.cmp-card` 数量精确;exit 0 才算完成)。
-
-## StepC · 人物/博主蒸馏(creator_corpus 路径)
-
-蒸馏对象是「**一个人**的跨媒介全部作品」(视频博主的全部视频 + 专栏/Newsletter + 书 + 播客)时走本路径,**不走 Step0-Step7 主管线** -- 主管线的分析单位是「一部作品」,本路径的分析单位是「人」,基本单元是跨媒介归并后的「观点族」。
-
-- **做什么**:全量采集 → 来源卡建库 → 去重聚类(观点族/主题/关系/时间线) → 总体蒸馏(系统/模型/张力/谱系) → **外部交叉核验 + 通俗化两道闸(必做)** → 产出与网站 creator-distill 契约一致的 10 份数据 JSON + 作者简介。
-- **读哪个 reference**:`creator-craft.md`(§0 路由 / §1 总原则「输入全量采集、分析完整建库、展示去重重构」/ §3 P0-P9 阶段管线与批次门 / §5 密度下限 / §6 外部交叉核验 / §7 通俗化两道闸 / §8 展示层信息架构 / §9 数据流规则)。
-- **产物**:`{人物项目目录}` 五层数据(L0-L4) + 下游网站数据包；页面渲染、契约测试与部署由消费该数据包的产品工程负责。
-- **先例与模板**:`references/creator-craft.md` 记录了经多人物实测收敛的来源卡、证据索引与导出契约；公开测试使用合成 fixture，不依赖任何私有项目目录。
-- **与 StepA 的区别**:StepA 聚合「同一作者已蒸的 ≥2 本书」(只读 distill.json,绝不重蒸);StepC 从零蒸「一个人的全部语料」。人物出了书且书已单蒸,两者可共存。
-
-## Biography · 证据型人物传记(biography_corpus 候选路径)
-
-当目标是复原人物生平，而不是总结其自有作品中的思想时，使用 `biography_corpus`。这条路径不生成书籍蒸馏 HTML，也不复用 StepC 的观点族 schema。
-
-- **做什么**：为每个人物初始化独立 store → 建 Source Unit 与逐条 Observation → 由正式 reviewer 签署 admission / resolution → 形成六类 Canonical → 编写 Editorial → 补外部核验 → 以同一语义审计器执行 audit / strict-data / publish-ready → 把只读投影交给下游产品。
-- **读哪个 reference**：`biography-craft.md`。当前实验契约为 `0.9.0-candidate`，机器形状以 `biography-contract-v0.9.0.schema.json` 为准，跨文件闭包以 `scripts/biography_contract.py` 为唯一实现。仓库 SemVer 与数据契约版本是两个独立版本域；候选契约在稳定前可能调整。
-- **模型边界**：GLM-5.3 或其他外部模型可以并行做查漏、冲突扫描和修订建议，但只能写 `recommendation_only`；正式事实裁决只允许 manifest 中登记的 `human` 或 `main_agent` reviewer 签署。
-- **跨人物隔离**：每个人物都有独立 slug、稳定 subject ID、ID namespace、路由、资源目录和 CSS scope；共享资源必须显式登记为只读并绑定摘要，禁止从另一个人物项目继承隐式默认值。
-- **与「一页」产品的边界**：本路径交付公共数据契约、初始化骨架与门禁，不规定某个站点的信息架构、视觉、SEO 或发布流程。下游只读 Canonical / Editorial 投影，不能把页面状态反写事实层。
-
----
-
-
-
-## 硬门禁(四处,不过不许往下走)
-
-1. **Step0 exit 3 → 暂停该来源的正文生产**：诊断判「需 OCR」(扫描版纯图)或「需人工确认」(gb18030 疑似假字/乱码率>2%)时，先在已有授权内核原文件、换可用版本或做 OCR 与逐页校对；无法解决再报告明确缺口，只在需要新费用、权限或改变指定版本等决策时问用户。未放行前不硬读、不编内容；深读档还须按 `high-retention-books.md` §0.6 处理缺页。**视频系列同理**：`build_series.py` exit 3(全部视频都缺转写，一个都没抓到)时先核 manifest 与可用字幕，仍无可靠语料再报告缺口，不拿空语料硬蒸。
-   > **`toc_detected: false` / `chapters_detected: 1` 也要停**(v0.5 补):目录结构没识别出来 = 蒸馏时手里**没有原书章节划分**,章数只能靠模型自由发挥(2026-07-26 实测:6 本全切自同一个「套装共5册」合订 epub,`toc_detected` 全 false,产出的章数一律被压成 6 章)。
-   > **套装/合集 epub 走 `--volume` 切,别整本硬蒸、也别手工切**:`convert_book.py --list-volumes` 列出顶层分册与各自章数 → 逐本 `--volume "<分册名>"`。切分按 TOC 顶层定分册、按 **spine 区间**取正文(未列入目录的正文续页也收进来,只取 TOC 篇目会静默丢正文),`diagnose.title` 自动取分册名。`chapters_source` 字段标明章数来自 `epub_toc` 还是 `body_regex`。
-   > **v0.9.0 补**:`--list-volumes` 输出新增 `index` 字段,供 `--volume-index` 按下标寻址(分册重名时唯一可用的路径,且切出的 `title` 取自目录节点原名,遇到「目录」这类名字要人工改写)。**容器 >1MB 却只切出 <5000 字**会降级为「需人工确认」并 **exit 3** —— 那是切到封面页了,别当成书薄。古籍电子书的生僻字造字图现在转成 `〔图字:…〕` 可见标记,`diagnose.inline_glyph_images` 给计数;正文因此比旧版略长(造字图多的分册约 +0.2%~1.4%),**是补回来的信息,不是重复内容**。
-2. **Step2 两遍质量门禁自查(G1-G23)**:Pass1 骨架 + Pass2 详实转述产出后,按 `method.md §7` 逐条自查。通用/书型/详实门 G1-G21 不变;`stakes=high` 条件激活 G22;`domain_profile.domain=psychology` 条件激活 G23,要求每条 core_idea/decision_rule 有唯一 claim_id + 合法 claim_type。命中即打回重蒸/回补,不带病进 Step3/Step6。
-3. **Step7 verify v2 exit 0 才算完成**:`verify_page.py`(v2,传 `--distill` 追加契约门禁)退出码非 0 就不是成品。**已知心理学项目必须同时传 `--require-domain psychology --distill ... --source ...`**,否则严格验证直接失败;默认不传严格域则保持旧书兼容。心理学严格域另要求同书目录 `source-audit.json`,其中 claim map 必须绑定该目录固定文件名 `claim-coverage.json`,并核四输入 hash、原文章界、逐项原文命中、全部 audit flags 账本覆盖、evidence 对最终 claims 的精确覆盖及 HTML 三栏映射(见 `source-audit.md`)。按输出修数据/样式后重跑,直到 exit 0。**绝不放宽验证阈值或删检查项来假过关**。
-   > **T0 三道补盲门(v0.5,2026-07-27 加)**:`[占位]` 模板槽 / dummy 残留、`[schema]` 顶层必需键缺失、`[lint]` 封面是占位 SVG -- 三者**恒校验、任何 render_profile 不可关**。立法起因见 `flash-mode.md §0`(旧门禁 174 项全是「校验已有字段的取值」,默认「一定会填槽、一定产全 schema」;模型把模板原样交付或少产半个 schema 时,循环空转 = 零违规放行)。**`[schema]` 项对 2026-07-27 前蒸的旧书会报 render_profile/cover_intro 等缺失,属预期,旧书不必重蒸。**⚠ 默认/普通书 verify 仍主要查「结构 / 契约 / 版权长度 / 防注水」,不保证事实正确；心理学严格域会额外机检 source-audit 中声明的原文片段与行号、覆盖和输入 hash,但仍不能替代对「是否遗漏关键反例 / 是否误解语境」的人工语义复审。**exit 0 ≠ 内容绝对属实**(高后果书另做人工抽检,见铁律「不编造」)。
-
-4. **批量交付闸 exit 0 才许上站**(v0.5,蒸多本时):单本 verify 只回答「这一本合不合格」,回答不了「**这一批该有的都在吗**」。上站前把**预期名单显式**交给批量闸核对:
-
-   ```
-   python $SKILL/scripts/verify_batch.py --data-root "$DATA" --slugs slug1,slug2,slug3; echo "退出码=$?"
-   # 已知心理学批次必须把严格域传播到每一本
-   python $SKILL/scripts/verify_batch.py --data-root "$DATA" --slugs slug1,slug2,slug3 --require-domain psychology; echo "退出码=$?"
-   ```
-
-   它逐本核 ①产物齐备(缺 distill/html = 这本根本没蒸完)②`verify_page.py` 退出码 ③交付卫生(enrich 缺失 / `_pass2_g*.json` 中间态残留)。心理学严格批次还强制 `book.txt` 与 `source-audit.json` 存在，自动传播 `--source` 并逐书复算审计 hash；默认批次行为不变。**退出码 0 才允许上站**;非 0 时二选一 -- 补完管线,或**把这本从上站名单里摘掉**。⚠ **名单留着而产物不存在 = 线上 404**(2026-07-26 实测:6 本里 2 本只跑到 Step0,仍被挂上作品集页)。
-
-## 铁律(每步都守)
-
-- **锚点**:蒸馏内容必须锚定原文,`method.md §5.1` **六类字段**(core_ideas / decision_rules / quotes / mental_models.evidence / chapters.excerpts / self_check)每条带 `anchor`,上站进 `data-source`;无锚点论断 = 门禁打回。
-- **论点式标题(v2)**:`chapters[].title` / M04 `<h3>` 一律**可反驳的判断句**,禁「第N章 / 视频N」式纯章号、禁通用容器词(章节脉络/全书脉络/金句墙/总结/概述…),有效长度 ≥8 字(G8;verify 机拦黑名单+长度,判断句语义靠蒸馏自查)。**脑图二级节点(v4 批 A 双层化)例外**:`topic` 改概念关键词 ≤10 字做扫读层、**取消 ≥8 字下限**(仍守黑名单+禁容器词);可反驳判断句下沉到 `tags[0]`(≥8 字,verify 机拦缺失/过短),`tags[1]` 放「第N章」章码 chip(见 method §4.6 / html-spec §5)。
-- **详实度下限(v2)**:每章 `narrative` 书 ≥800 字 / 视频段 ≥400 字(G9);宁可少论点讲透,不注水;**标志性案例 / 故事必须整段完整讲**(时间·人物·动作·转折·结果),禁压成一句标签。高保留书中真实短来源附记和作者亲写的极短最后后记仅按 [专门契约 §5](references/high-retention-books.md#5-三层阅读与页面放行) 的逐项人工回执与完整校验入口处理，不能给主内容贴标签降档。
-- **真封面(书,v2)**:书籍 M01 封面必须**真封面 base64**(`data:image`),禁外链、禁纯色占位;联网拿不到才退占位 SVG。视频用系列封面(首集缩略图 `data:` URI)。
-- **URL**:外部信息(作者/书评/同类书/观点对比/跨书外部/心理学科学证据)必须带可点击 http(s) 来源 URL;拿不到就按各块契约降级,不臆造。心理学可检验 claim 不得整块隐藏,证据不足要显式低置信或未复制。
-- **不编造**:金句 `<blockquote>` / `excerpts` 原文照录不改写(直接照录单段 **≤150 字**,blockquote 明示引用,连续 30 字与原文雷同即版权红线须改写);拿不到的数据(评分/年份)据实留空,不制造假精度。`evidence_level` 只表示原书转述忠实度,**不得当作科学有效性**。**高后果书事实抽检(`stakes=high`)**:育儿 / 医疗 / 理财 / 法律等读者会照着做、数字错会误导的书(判定见 `method.md §1.5`),蒸完须**人工回原书抽检 ≥5 条可执行数字 / 月龄 / 剂量 / 时长 + 金句**,确认所标 `anchor` 指向处确有其文、数值未被记串。抽出错即回改或降 `evidence_level`;这类可执行数字还须逐条标 `certainty`(见 §4.5.16/G22)。心理学书另逐 claim 做外部科学证据核查(见 enrich §1.1/G24)。
-- **破折号一律 `--`**:所有给读者看的文字里用两个英文连字符,禁全角 `——`。
-- **底部「回原书」声明**:页面底部固定 AI 拆书当地图、别当目的地的收口声明(骨架已带,别删)。
-- **上站 = 有静态入口 + 有 SEO 头,少一样等于没上站**(2026-08-14 实证,代价:一批蒸馏页零收录):
-  - **静态入口**:新蒸的书必须能从某个目录/书单页用**静态 `<a href>`** 点到。判据是 HTML 里那条边 ——
-    搜索引擎只认它,**JS 运行时才渲染出来的导航对爬虫完全不存在**。只把 HTML 丢进静态目录、
-    只登记进索引 JSON、只提交 sitemap,**都不算**:实测这样的页面会被判「已发现 - 尚未编入索引」,
-    一篇都不收。而它毫无症状 —— 页面能开、构建不报错、索引也登记了。
-  - **SEO 头**:蒸馏产出的独立 HTML 往往只有 `<title>`。上站前补 `description` / `canonical` /
-    `og:*`,用**幂等脚本批量注入**(读书目 JSON 取书名作者简介封面),别手改一百个文件。
-  - **URL 一致**:目录页链 `/x/` 而 sitemap 提交 `/x/index.html`,同一篇会以两个 URL 进索引。
-  - 数量一多就该建**从数据真源自动生成的目录页**:内容增删自动跟随,不需要谁回头维护清单。
-
-## 批量模式(蒸多本)
-
-深读档多书的来源门、阶段回执、模型请求并发、人工裁决和发布状态先按 [book-batch-operations.md](references/book-batch-operations.md) 执行。下列 Pass2 子 Agent 的 6–8 路实测规则属于 Step0–Step7 导读管线，不是深读档或其他模型车道的通用并发值。
-
-> **成本大头在编排层,不在 Pass2 分块数**:逐章命名 ≠ 逐章派 agent,各 subagent 仍守「≤5 章/组」,砍分块数省不到 token 且掉详实度。真正吃 token/时长的四项:①并发撞 529 风暴 ②会话碎片化 re-grounding ③同作者重复联网 ④失败假重跑。以下按此立规,**优化编排、不砍生成深度**。
-
-- **先抽样 1 本人工验收再铺量**:多本任务先完整跑通 1 本(Step0-7 + 浏览器过一遍),你/审校者确认质量与 signature 成立,**通过才铺其余**;通过后**错峰**铺,不齐发。
-- **上站前必过批量交付闸**(见硬门禁④):`verify_batch.py --slugs <预期名单>` exit 0 才许上站；心理学批次追加 `--require-domain psychology`。**预期名单必须显式声明**,靠人肉数「应该都蒸完了吧」正是 2026-07-26 漏掉 2 本仍上站的病因。
-- **跨会话并发闸**:**全局在飞的 Pass2 subagent ≤ 6-8 个**,不论开了几个会话 / 几个作者批次并行。**多作者批次禁同时段并跑 Pass2** —— 多作者通宵并发会直接引爆服务端 529 风暴(大量 agent 撞 529、大量 retry、墙钟拖到 8-9 小时)。批次之间**错峰发起**,别十分钟内齐发。
-- **1 本书 = 1 会话(或每会话 ≤2-3 本)**:避免单会话塞多本反复 compact(实测单会话曾 compact 8 次)。会话续接**只重读小的 `distill.json` checkpoint,禁重读 `book.txt` 全文**(实测 book.txt 曾被重复引用 60-198 次/会话)。
-- **批前估 token 预算**:铺量前粗估「N 本 × 每本约 X = 总量」,对照账户周/日用量上限;超则分日/分批跑,**预留撞用量上限的余量**(实测批量铺量曾把账户用量跑爆、被迫中途暂停)。全程用高能力模型、不做 token 节流仍成立,但要预判总量别中途断粮。
-- **失败先核盘再重派(防假重跑)**:agent 报「失败」多为已写盘、只是返回元数据时被限流。重派任何失败 agent 前,**先查 `$DATA/{书目录}/` 下 `_pass2_g*.json` / 产物是否已落盘**:已落盘只对缺章做**定点 gap-fill,禁整组重跑**。fan-out 合并后断言「N 章 narrative 全齐且达标」,只补真缺口(见 `method.md §3.5.5` 合并完整性门禁)。
-- **Pass2 产物统一命名 `_pass2_gN.json` + 合并后清理**:并发多会话易各自即兴命名(曾并存 `_ch_N`/`_pass2_N`/`_pass2_gN`/`_pass2_batchX` 四套),漂移致合并对不齐、掉章。**统一只用 `_pass2_gN.json`**;**合并完整性门禁通过后,主控删本书 `_pass2_g*.json` 中间态**(已 gitignore、已回填 distill,别留到入库/聚合污染目录 -- 2026-07-15 复盘 13 本睡眠书 7 本残留)。见 `method.md §3.5.5` 清理步。
-- **同作者 enrich 只搜一次**:批量拆同一作者多本时,作者研究(author_page)**一位作者只联网搜一次**,写 `$DATA/authors/{author_slug}/author.enrich.json`,各书 enrich 的 author_page **引用它、不重搜**(否则同一作者多本各自重搜作者背景 = 大量冗余联网轮次);与 StepA 作者演变聚合页共用同一份作者研究(见 `enrich.md §3` + StepA)。
-- **索引串行登记**:Step4 的 `update_index.py register` 会写同一个 `knowledge-index.json`,批量时**串行**登记(逐本 dry-run→真跑),避免并发写盘互相覆盖;每次写前自动 `.bak`。
-
-## 环境依赖
-
-- Python **>= 3.10**:`pip install ebooklib beautifulsoup4 pymupdf pillow pytest playwright` + `playwright install chromium`(Step7 需 chromium;`pillow` 用于真封面 / 缩略图的压缩与 base64 内联)。`biography_corpus` 候选路径另需 `jsonschema>=4`。
-- azw3 / mobi 输入需 calibre 的 `ebook-convert`(`winget install calibre.calibre`);epub/pdf/txt 不需要。
-- **视频系列**(取材 cascade 见 `method.md §V.0`):`yt-dlp`(YouTube 抓字幕 + 抓评论;B站评论走公开 API 免依赖)。B站/抖音的转写需一个字幕/ASR 上游工具(如 `video-to-subtitle-summary`,读其 `AI_DOUYIN_API_KEY`);fetch_comments 的 B站评论无需 key。**无字幕 / 需画面语义**走一个 Gemini 视频分析工具,如独立公开 skill [`sansheng-gemini-video`](https://github.com/sanshengai/sansheng-gemini-video)(读 env `GOOGLE_API_KEY`),装上即可;不装不影响书籍蒸馏与有字幕视频。
+落盘时才读 [workspace-layout.md](references/workspace-layout.md) 获取变量、数据布局和按需依赖；命令使用实际目录与 `python3`，读取原命令退出码。

@@ -1,9 +1,8 @@
 # flash-mode -- 轻量模型 / 弱 agent 执行卡
 
-> **谁该读这份**:用 Gemini Flash 级轻量模型、或 agent 编排能力较弱的客户端(如 Antigravity)跑本 skill 时,**先读本卡再读 SKILL.md**。
-> 用 Opus / Sonnet 级模型跑的,不必读本卡,照 SKILL.md 主管线走即可。
->
-> **本卡不降低任何质量标准**,只做三件事:①把「靠自觉」的环节换成「可自检的判据」;②把长链条拆成带完成凭证的短步;③把最容易滑落的六个点单独拎出来钉死。
+> **谁该读这份**：轻量模型或编排能力较弱的客户端。先读 SKILL.md 的对象分流并确定档位，再读本卡。
+> **适用边界**：§2 的 Pass1/Pass2、800字和每章摘录判据仅用于导读/视频主管线。完整读者版执行 reader-edition-books.md 的六步与审核收据；严格深读执行 high-retention-books.md 的专门契约。两者只参考本卡中实际适用的来源、字段、占位与页面验证底线，不叠加另一套生产或审阅。
+> 本卡把已选流程的要求变成可自检判据，不改变用户已授权的质量取舍。下文事故与数字保留为历史案例，不作为所有档位的统一阈值。
 
 ---
 
@@ -38,10 +37,10 @@
 
 ```bash
 # ① 先看这个 epub 是不是套装,有哪些分册
-python $SKILL/scripts/convert_book.py "<套装.epub>" --list-volumes
+python3 $SKILL/scripts/convert_book.py "<套装.epub>" --list-volumes
 
 # ② 逐本切(分册名用上一步输出的原文)
-python $SKILL/scripts/convert_book.py "<套装.epub>" --outdir "$DATA/{slug}" --volume "眨眼之间"
+python3 $SKILL/scripts/convert_book.py "<套装.epub>" --outdir "$DATA/{slug}" --volume "眨眼之间"
 ```
 
 切分按 TOC 顶层定分册、按 spine 区间取正文(未列入目录的续页也收进来),`title` 自动取分册名。
@@ -50,12 +49,12 @@ python $SKILL/scripts/convert_book.py "<套装.epub>" --outdir "$DATA/{slug}" --
 
 ```
 toc_detected: true   → 正常开工
-toc_detected: false  → 停下问用户。别硬蒸,章数会失控
+toc_detected: false  → 先核原目录及真实章界；核不清则暂停，不凭模型猜章节
 ```
 
-### 1.2 一本书 = 一个会话
+### 1.2 按书隔离状态
 
-多本塞一个会话会反复 compact 丢上下文。轻量模型尤其扛不住,**一本一会话**。
+每本书独立保存来源、任务与断点，避免跨书串数据。批量任务可由一个主控调度；不因这张卡强制另开会话或增加 Agent，车道与并发按 book-batch-operations.md 及项目配置。
 
 ---
 
@@ -66,11 +65,11 @@ toc_detected: false  → 停下问用户。别硬蒸,章数会失控
 ### Step0 · 转 txt + 入书诊断
 
 ```bash
-python $SKILL/scripts/convert_book.py "<书文件>" --outdir "$DATA/{slug}"
+python3 $SKILL/scripts/convert_book.py "<书文件>" --outdir "$DATA/{slug}"
 ```
 
-**判据**:`book.txt` 与 `diagnose.json` 都已落盘 且 `toc_detected: true` 且 exit 0。
-exit 3(需 OCR / 需人工确认)→ **停下问用户**,不硬读、不编内容。
+**判据**：book.txt、diagnose.json 已落盘且 exit 0，来源完整与真实章界有可回查证据；toc_detected=false 时须核原目录，不要求靠正则假装识别成功。
+exit 3（需 OCR / 需人工确认）→ 暂停该来源的正文生产，先在已有授权内核原件、换版本或 OCR。只有缺少关键版本决定、新费用或权限时才问用户；不硬读、不编内容。
 
 ### Step1 · 书型判定 + render_profile
 
@@ -85,7 +84,7 @@ exit 3(需 OCR / 需人工确认)→ **停下问用户**,不硬读、不编内�
 **判据 -- 用命令核,别靠印象**:
 
 ```bash
-python $SKILL/scripts/verify_pass1.py "$DATA/{slug}/distill.json"; echo "退出码=$?"
+python3 $SKILL/scripts/verify_pass1.py "$DATA/{slug}/distill.json"; echo "退出码=$?"
 ```
 
 退出码 0 才算 Pass1 完成。**这一步最容易少产字段**,门禁会逐个点名缺了哪个。必产的 21 个顶层键:
@@ -129,9 +128,9 @@ print([(c.get('no'),len(c.get('narrative','') or '')) for c in d['chapters']])"
 ### Step4 · 跨书索引登记
 
 ```bash
-python $SKILL/scripts/update_index.py query --index "$DATA/knowledge-index.json" --names-only
+python3 $SKILL/scripts/update_index.py query --index "$DATA/knowledge-index.json" --names-only
 # 写 index-merge.json 后:
-python $SKILL/scripts/update_index.py register --index "$DATA/knowledge-index.json" \
+python3 $SKILL/scripts/update_index.py register --index "$DATA/knowledge-index.json" \
   --merge "$DATA/{slug}/index-merge.json" --dry-run
 ```
 
@@ -160,7 +159,7 @@ grep -oi 'dummy' "$DATA/{slug}/{slug}.html" | wc -l
 ### Step7 · 出厂验证(不许跳)
 
 ```bash
-python $SKILL/scripts/verify_page.py "$DATA/{slug}/{slug}.html" \
+python3 $SKILL/scripts/verify_page.py "$DATA/{slug}/{slug}.html" \
   --distill "$DATA/{slug}/distill.json" --screenshot "$DATA/{slug}/_verify.png"
 echo "退出码=$?"
 ```
@@ -178,7 +177,7 @@ echo "退出码=$?"
 上站前**必须**跑批量闸,把预期名单显式交给它核对:
 
 ```bash
-python $SKILL/scripts/verify_batch.py --data-root "$DATA" \
+python3 $SKILL/scripts/verify_batch.py --data-root "$DATA" \
   --slugs slug1,slug2,slug3,slug4
 echo "退出码=$?"
 ```
@@ -195,7 +194,7 @@ echo "退出码=$?"
 | 1 | 跳 Step7 直接交付 | 每本收工前必跑 verify_page,看退出码不看感觉 |
 | 2 | 槽没填完就交付 | Step6 收尾 grep 两个计数,都必须是 0 |
 | 3 | schema 少产字段 / 自造键名 | Pass1 后跑 verify_pass1.py;键名对照 method.md §6 |
-| 4 | 章数归并成 5-6 章 | 章数跟原书目录走;`toc_detected: false` 先停 |
+| 4 | 章数归并成 5-6 章 | 章数跟原书目录走;`toc_detected: false` 先核真实目录与章界，核不清才停 |
 | 5 | narrative 写到 300 字就收 | 逐章核字数,<800 回去补,不许"精简一下"过关 |
 | 6 | 少蒸的书仍进上站名单 | 上站前跑 verify_batch,预期名单显式声明 |
 

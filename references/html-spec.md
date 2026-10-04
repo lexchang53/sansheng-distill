@@ -10,14 +10,7 @@
 
 ## 0. 路径与变量约定(全文只定义一次)
 
-| 占位符 | 展开为 |
-|---|---|
-| `$SKILL` | 本 skill 目录(安装后为 `~/.claude/skills/sansheng-distill`) |
-| `$DATA` | 书数据根目录,由环境变量 `DISTILL_DATA_DIR` 指定(默认 `./distill-data`) |
-| `{书目录}` | 本书数据目录,**纯 `{slug}`**(如 `pei-haizi-zhongshen-chengzhang`);不含书名,避免中文目录名 |
-| 骨架 | `$SKILL/templates/page-skeleton.html` |
-| 本书产物页 | `$DATA/{书目录}/{slug}.html` |
-| distill / enrich | `$DATA/{书目录}/distill.json` / `enrich.json` |
+变量统一定义在 [workspace-layout.md](workspace-layout.md)，使用实际 Skill 本体与项目数据目录；命令中的占位符须替换为实值。
 
 下文命令里的占位符直接替换成实值再执行。
 

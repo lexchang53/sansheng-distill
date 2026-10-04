@@ -58,11 +58,12 @@ CH_PAT = re.compile(
 )
 ```
 
-#### 2. 檢查 `SKILL.md`（Step7 自動後處理規範）
-確保 Step7 表格包含以下自動繁體化後處理指令與鐵律說明：
-- **表格 Step7 指令**：
+#### 2. 檢查 `SKILL.md` 與 `references/pipeline-*.md`（Step7 自動後處理規範）
+確保包含以下自動繁體化後處理指令與鐵律說明：
+- **`SKILL.md` description**：包含 `或當使用者要求「更新/升級 sansheng-distill 技能」時...` 觸發指示。
+- **`references/pipeline-steps.md` 表格 Step7 指令**：
   > 驗證 exit 0 後**自動執行**：`python "C:\Users\lex\.gemini\config\skills\zhconvert\scripts\convert.py" "$DATA/{書目錄}/{slug}.html" --mode "Taiwan" --overwrite` 並確保 html 標籤改為 `<html lang="zh-Hant-TW">`
-- **下方鐵律 (Iron Law)**：
+- **`references/pipeline-rules.md` 下方鐵律 (Iron Law)**：
   > ⚠ **產出物繁體在地化鐵律**：無論中間過程使用何種模型或內部繁簡格式，最終產出的 HTML 與展示頁面**必須一律經由 zhconvert 自動後處理為符合台灣語境習慣的繁體中文**，並將 `<html lang="zh">` 改為 `<html lang="zh-Hant-TW">`，嚴禁交付殘留簡體字或大陸用語（如：視頻、字段、模塊、信息、默認）之 HTML 產物。
 
 #### 3. 保留 `README.md`

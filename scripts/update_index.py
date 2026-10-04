@@ -62,7 +62,14 @@ def main():
     r = sub.add_parser("register"); r.add_argument("--index", required=True)
     r.add_argument("--merge", required=True)
     r.add_argument("--dry-run", action="store_true"); r.add_argument("--force", action="store_true")
+    b = sub.add_parser("replace-book", help="validated whole-book replacement")
+    b.add_argument("--index", required=True); b.add_argument("--merge", required=True)
+    b.add_argument("--book-slug", required=True); b.add_argument("--distill", required=True)
+    b.add_argument("--dry-run", action="store_true")
     a = ap.parse_args()
+    if a.cmd == "replace-book":
+        from replace_book_index import replace_cli
+        return replace_cli(a)
     path = Path(a.index); index = load_index(path)
     if a.cmd == "query":
         out = [c["concept"] for c in index["concepts"]] if a.names_only else index
