@@ -39,68 +39,126 @@ RESPONSIVE_SKETCH_JS = """function initSketch(){
   const SVGNS = 'http://www.w3.org/2000/svg';
   const mk = (t, a) => { const el = document.createElementNS(SVGNS, t); for (const k in a) el.setAttribute(k, a[k]); return el; };
 
-  // 1. 電腦版：橫向雙行文字無遮擋版
+  // 1. 電腦版：高呼吸感拓撲分層流圖（加寬間隙、嚴密避讓、光暈防遮擋）
   function renderDesktop(){
     host.textContent = '';
-    const FS = 12, PADX = 18, NH = 38, HGAP = 58, PAD = 14;
-    const wOf = n => Math.max(122, String(n.label || '').length * 15 + PADX * 2);
+    const byId = {}; nodes.forEach(n => { byId[n.id] = n; });
+    const layer = {}; nodes.forEach(n => { layer[n.id] = 0; });
+    const N = nodes.length;
 
-    let xacc = PAD;
+    // 計算拓撲層級
+    for (let it = 0; it < N + 2; it++){
+      let changed = false;
+      edges.forEach(e => {
+        if (byId[e.from] === undefined || byId[e.to] === undefined) return;
+        if (layer[e.to] < layer[e.from] + 1){ layer[e.to] = layer[e.from] + 1; changed = true; }
+      });
+      if (!changed) break;
+    }
+
+    const layers = {}; let maxL = 0;
+    nodes.forEach(n => { const L = layer[n.id]; (layers[L] = layers[L] || []).push(n); if (L > maxL) maxL = L; });
+
+    const NH = 38, VGAP = 22, HGAP = 70, PAD_X = 20, PAD_Y = 24;
+    const nodeW = 126;
+    
+    let maxColH = 0;
+    for (let L = 0; L <= maxL; L++){
+      const row = layers[L] || [];
+      const h = row.length * NH + Math.max(0, row.length - 1) * VGAP;
+      if (h > maxColH) maxColH = h;
+    }
+
+    const colX = {}; let xacc = PAD_X;
+    for (let L = 0; L <= maxL; L++){ colX[L] = xacc; xacc += nodeW + HGAP; }
+
     const pos = {};
-    nodes.forEach(n => {
-      const w = wOf(n);
-      pos[n.id] = { x: xacc, y: PAD, w: w, h: NH, cx: xacc + w / 2, cy: PAD + NH / 2, xL: xacc, xR: xacc + w };
-      xacc += w + HGAP;
-    });
-    const totalW = xacc - HGAP + PAD;
-    const totalH = PAD * 2 + NH;
+    for (let L = 0; L <= maxL; L++){
+      const row = layers[L] || [];
+      const colH = row.length * NH + Math.max(0, row.length - 1) * VGAP;
+      let y = PAD_Y + (maxColH - colH) / 2;
+      const x = colX[L];
+      row.forEach(n => {
+        pos[n.id] = { x: x, y: y, w: nodeW, h: NH, cx: x + nodeW / 2, cy: y + NH / 2, xL: x, xR: x + nodeW, topY: y, botY: y + NH, layer: L };
+        y += NH + VGAP;
+      });
+    }
+
+    const totalW = (xacc - HGAP) + PAD_X;
+    const totalH = PAD_Y * 2 + maxColH;
 
     const svg = mk('svg', { viewBox: `0 0 ${Math.round(totalW)} ${Math.round(totalH)}`, role: 'img', 'aria-label': String((d && d.caption) || '全書因果骨架圖') });
+    svg.style.width = '100%';
+    svg.style.maxWidth = '1060px';
+    svg.style.height = 'auto';
+    svg.style.display = 'block';
+    svg.style.margin = '0 auto';
 
-    // Lines & Arrows
+    // 繪製連線與箭頭
     edges.forEach(e => {
       const A = pos[e.from], B = pos[e.to];
       if (!A || !B) return;
       const x1 = A.xR, y1 = A.cy, x2 = B.xL, y2 = B.cy;
-      svg.appendChild(mk('polyline', { points: `${x1},${y1} ${x2},${y2}`, class: 'sk-line' }));
-      const ah = 5;
-      svg.appendChild(mk('path', { d: `M ${x2 - ah} ${y2 - ah} L ${x2 - ah} ${y2 + ah} L ${x2} ${y2} Z`, class: 'sk-arrow' }));
+      const lab = String(e.label || '').trim();
+
+      if (Math.abs(y1 - y2) < 3) {
+        // 同水平線直連
+        const midX = (x1 + x2) / 2;
+        svg.appendChild(mk('polyline', { points: `${x1},${y1} ${x2},${y2}`, class: 'sk-line' }));
+        svg.appendChild(mk('path', { d: `M ${x2 - 5} ${y2 - 4} L ${x2 - 5} ${y2 + 4} L ${x2} ${y2} Z`, class: 'sk-arrow' }));
+        if (lab) {
+          const t = mk('text', { x: midX, y: y1 - 8, class: 'sk-elabel', 'text-anchor': 'middle', style: 'font-size:11.5px!important;font-weight:700;' });
+          t.textContent = lab;
+          svg.appendChild(t);
+        }
+      } else if (B.layer === A.layer + 1) {
+        // 相鄰列階梯折線（起點水平 -> 垂直 -> 終點水平）
+        const midX = x1 + 32;
+        const pts = `${x1},${y1} ${midX},${y1} ${midX},${y2} ${x2},${y2}`;
+        svg.appendChild(mk('polyline', { points: pts, class: 'sk-line' }));
+        svg.appendChild(mk('path', { d: `M ${x2 - 5} ${y2 - 4} L ${x2 - 5} ${y2 + 4} L ${x2} ${y2} Z`, class: 'sk-arrow' }));
+        if (lab) {
+          // 起點向右對齊，精確置於空白段上，絕不壓左側節點邊框
+          const lx = x1 + 8;
+          const ly = (y1 < y2) ? (y1 - 7) : (y1 + 15);
+          const t = mk('text', { x: lx, y: ly, class: 'sk-elabel', 'text-anchor': 'start', style: 'font-size:11.5px!important;font-weight:700;' });
+          t.textContent = lab;
+          svg.appendChild(t);
+        }
+      } else {
+        // 跨列連線（繞道連入）
+        const midY = (y1 > y2) ? (A.botY + 16) : (A.topY - 16);
+        const pts = `${x1},${y1} ${x1 + 18},${y1} ${x1 + 18},${midY} ${x2 - 18},${midY} ${x2 - 18},${y2} ${x2},${y2}`;
+        svg.appendChild(mk('polyline', { points: pts, class: 'sk-line' }));
+        svg.appendChild(mk('path', { d: `M ${x2 - 5} ${y2 - 4} L ${x2 - 5} ${y2 + 4} L ${x2} ${y2} Z`, class: 'sk-arrow' }));
+        if (lab) {
+          const t = mk('text', { x: (x1 + x2) / 2, y: midY - 6, class: 'sk-elabel', 'text-anchor': 'middle', style: 'font-size:11.5px!important;font-weight:700;' });
+          t.textContent = lab;
+          svg.appendChild(t);
+        }
+      }
     });
 
-    // Nodes
+    // 繪製節點
     nodes.forEach(n => {
       const p = pos[n.id]; if (!p) return;
-      const cls = 'sk-node' + (n.mid ? ' sk-mid' : '');
-      svg.appendChild(mk('rect', { x: p.x, y: p.y, width: p.w, height: p.h, rx: 8, ry: 8, class: cls }));
-      const tcls = 'sk-label' + (n.mid ? ' sk-tmid' : '');
-      const t = mk('text', { x: p.cx, y: p.cy + 4.5, class: tcls, 'text-anchor': 'middle', 'font-size': '12px' });
+      const isEnd = (p.layer === maxL);
+      let cls = 'sk-node';
+      if (isEnd) cls += ' sk-end';
+      else if (n.mid) cls += ' sk-mid';
+
+      svg.appendChild(mk('rect', { x: p.x, y: p.y, width: p.w, height: p.h, rx: 7, ry: 7, class: cls }));
+      
+      let tcls = 'sk-label';
+      let fillCol = 'var(--ink)';
+      if (isEnd || n.mid) {
+        tcls += ' sk-tmid';
+        fillCol = '#ffffff';
+      }
+      
+      const t = mk('text', { x: p.cx, y: p.cy + 4.5, class: tcls, fill: fillCol, 'text-anchor': 'middle', style: 'font-size:12.5px!important;font-weight:700;' });
       t.textContent = String(n.label || '');
       svg.appendChild(t);
-    });
-
-    // Edge Labels (Strictly on top of line, 2 lines for >= 4 chars)
-    edges.forEach(e => {
-      const A = pos[e.from], B = pos[e.to];
-      if (!A || !B) return;
-      const midX = (A.xR + B.xL) / 2;
-      const yLine = A.cy;
-      const lab = String(e.label || '').trim();
-      if (!lab) return;
-
-      if (lab.length <= 3) {
-        const t = mk('text', { x: midX, y: yLine - 8, class: 'sk-elabel', 'text-anchor': 'middle', 'font-size': '11.5px' });
-        t.textContent = lab;
-        svg.appendChild(t);
-      } else {
-        const line1 = lab.slice(0, 2);
-        const line2 = lab.slice(2);
-        const t = mk('text', { x: midX, y: yLine - 16, class: 'sk-elabel', 'text-anchor': 'middle', 'font-size': '11px' });
-        const ts1 = mk('tspan', { x: midX, dy: '0' }); ts1.textContent = line1;
-        const ts2 = mk('tspan', { x: midX, dy: '12' }); ts2.textContent = line2;
-        t.appendChild(ts1);
-        t.appendChild(ts2);
-        svg.appendChild(t);
-      }
     });
 
     if (d && d.caption){
@@ -111,48 +169,109 @@ RESPONSIVE_SKETCH_JS = """function initSketch(){
     host.appendChild(svg);
   }
 
-  // 2. 手機版：唯一專屬「直式單列版」（字體適度放大，節點 17px，標籤 15px，框高 48px）
-  function renderMobileSingleCol(){
+  // 2. 手機版：頂部膠囊並排 + 縱向挺拔主幹（間隙拉大至38px，大箭頭，高清晰）
+  function renderMobileFlow(){
     host.textContent = '';
-    const W = 350;
-    const nodeW = 250, nodeH = 48;
-    const yStart = 16, gapY = 82;
-    const H = yStart * 2 + (nodes.length - 1) * gapY + nodeH;
+    const W = 360;
     
-    const svg = mk('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': String((d && d.caption) || '全書因果骨架圖') });
+    const byId = {}; nodes.forEach(n => { byId[n.id] = n; });
+    const layer = {}; nodes.forEach(n => { layer[n.id] = 0; });
+    const N = nodes.length;
+    for (let it = 0; it < N + 2; it++){
+      let changed = false;
+      edges.forEach(e => {
+        if (byId[e.from] === undefined || byId[e.to] === undefined) return;
+        if (layer[e.to] < layer[e.from] + 1){ layer[e.to] = layer[e.from] + 1; changed = true; }
+      });
+      if (!changed) break;
+    }
+
+    const inputNodes = nodes.filter(n => layer[n.id] === 0);
+    const mainNodes = nodes.filter(n => layer[n.id] > 0);
+
+    const pos = {};
+    let curY = 16;
+
+    // 1. 頂部輸入層
+    const inCount = inputNodes.length;
+    const inGap = 8;
+    const inPadX = 12;
+    const inW = (W - 2 * inPadX - (inCount - 1) * inGap) / inCount;
+    const inH = 34;
+
+    inputNodes.forEach((n, i) => {
+      const x = inPadX + i * (inW + inGap);
+      pos[n.id] = { x, y: curY, w: inW, h: inH, cx: x + inW / 2, cy: curY + inH / 2, topY: curY, botY: curY + inH, isInput: true };
+    });
+
+    curY += inH + 52; // 留出 52px 充裕匯聚連線空間
+
+    // 2. 主幹節點（加長垂直間隙）
+    const mainW = 236, mainH = 38;
+    const mainX = (W - mainW) / 2;
+    const gapMain = 76; // 節點間純空隙拉長至 38px
+
+    mainNodes.forEach((n, i) => {
+      const y = curY + i * gapMain;
+      pos[n.id] = { x: mainX, y: y, w: mainW, h: mainH, cx: W / 2, cy: y + mainH / 2, topY: y, botY: y + mainH, isInput: false, isEnd: (i === mainNodes.length - 1) };
+    });
+
+    const totalH = curY + (mainNodes.length - 1) * gapMain + mainH + 20;
+
+    const svg = mk('svg', { viewBox: `0 0 ${W} ${totalH}`, role: 'img', 'aria-label': String((d && d.caption) || '全書因果骨架圖') });
     svg.style.display = 'block';
     svg.style.width = '100%';
     svg.style.height = 'auto';
 
-    const cX = W / 2;
-    const x = (W - nodeW) / 2;
-
-    const pos = {};
-    nodes.forEach((n, i) => {
-      const y = yStart + i * gapY;
-      pos[n.id] = { x: x, y: y, w: nodeW, h: nodeH, cx: cX, cy: y + nodeH / 2, topY: y, botY: y + nodeH };
-    });
-
-    // Lines & Arrows
+    // 繪製連線與箭頭
     edges.forEach(e => {
       const A = pos[e.from], B = pos[e.to];
       if (!A || !B) return;
-      svg.appendChild(mk('polyline', { points: `${A.cx},${A.botY} ${B.cx},${B.topY}`, class: 'sk-line' }));
-      svg.appendChild(mk('path', { d: `M ${B.cx - 5} ${B.topY - 7} L ${B.cx + 5} ${B.topY - 7} L ${B.cx} ${B.topY} Z`, class: 'sk-arrow' }));
-      const midY = (A.botY + B.topY) / 2 + 5.5;
-      const t = mk('text', { x: A.cx + 20, y: midY, class: 'sk-elabel', 'text-anchor': 'start', style: 'font-size:15px!important;font-weight:700;' });
-      t.textContent = String(e.label || '');
-      svg.appendChild(t);
+      const lab = String(e.label || '').trim();
+
+      if (A.isInput && !B.isInput) {
+        // 從頂部膠囊向下匯聚到第一個主幹節點
+        const midY = (A.botY + B.topY) / 2;
+        const pts = `${A.cx},${A.botY} ${A.cx},${midY} ${B.cx},${B.topY}`;
+        svg.appendChild(mk('polyline', { points: pts, class: 'sk-line' }));
+        svg.appendChild(mk('path', { d: `M ${B.cx - 4.5} ${B.topY - 6} L ${B.cx + 4.5} ${B.topY - 6} L ${B.cx} ${B.topY} Z`, class: 'sk-arrow' }));
+        if (lab) {
+          const t = mk('text', { x: A.cx, y: A.botY + 16, class: 'sk-elabel', 'text-anchor': 'middle', style: 'font-size:11px!important;font-weight:700;' });
+          t.textContent = lab;
+          svg.appendChild(t);
+        }
+      } else {
+        // 主幹縱向直連（長箭頭，大氣醒目）
+        svg.appendChild(mk('polyline', { points: `${A.cx},${A.botY} ${B.cx},${B.topY}`, class: 'sk-line' }));
+        svg.appendChild(mk('path', { d: `M ${B.cx - 5} ${B.topY - 7} L ${B.cx + 5} ${B.topY - 7} L ${B.cx} ${B.topY} Z`, class: 'sk-arrow' }));
+        if (lab) {
+          const midY = (A.botY + B.topY) / 2 + 4.5;
+          const t = mk('text', { x: A.cx + 18, y: midY, class: 'sk-elabel', 'text-anchor': 'start', style: 'font-size:12.5px!important;font-weight:700;' });
+          t.textContent = lab;
+          svg.appendChild(t);
+        }
+      }
     });
 
-    // Nodes (Font size 17px, strictly matching napkin body text)
+    // 繪製節點
     nodes.forEach(n => {
       const p = pos[n.id]; if (!p) return;
-      const cls = 'sk-node' + (n.mid ? ' sk-mid' : '');
-      svg.appendChild(mk('rect', { x: p.x, y: p.y, width: p.w, height: p.h, rx: 9, ry: 9, class: cls }));
-      const tcls = 'sk-label' + (n.mid ? ' sk-tmid' : '');
-      const fillCol = n.mid ? '#fffaf0' : 'var(--ink)';
-      const t = mk('text', { x: p.cx, y: p.cy + 6, class: tcls, fill: fillCol, 'text-anchor': 'middle', style: 'font-size:17px!important;font-weight:700;' });
+      let cls = 'sk-node';
+      if (p.isEnd) cls += ' sk-end';
+      else if (n.mid) cls += ' sk-mid';
+
+      svg.appendChild(mk('rect', { x: p.x, y: p.y, width: p.w, height: p.h, rx: 7, ry: 7, class: cls }));
+      
+      let tcls = 'sk-label';
+      let fillCol = 'var(--ink)';
+      if (p.isEnd || n.mid) {
+        tcls += ' sk-tmid';
+        fillCol = '#ffffff';
+      }
+      
+      const fsize = p.isInput ? '11px' : '13.5px';
+      const dy = p.isInput ? 4 : 4.5;
+      const t = mk('text', { x: p.cx, y: p.cy + dy, class: tcls, fill: fillCol, 'text-anchor': 'middle', style: `font-size:${fsize}!important;font-weight:700;` });
       t.textContent = String(n.label || '');
       svg.appendChild(t);
     });
@@ -170,7 +289,7 @@ RESPONSIVE_SKETCH_JS = """function initSketch(){
     if (!isMobile) {
       renderDesktop();
     } else {
-      renderMobileSingleCol();
+      renderMobileFlow();
     }
   }
 
@@ -183,10 +302,107 @@ RESPONSIVE_SKETCH_JS = """function initSketch(){
   });
 }"""
 
-MOBILE_NAPKIN_CSS = """
+ENHANCED_CUSTOM_CSS = """
+/* ===== 響應式與排版修復 CSS ===== */
+.napkin-sketch {
+  margin: 6px 0 24px;
+  padding: 16px 14px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
+}
+.napkin-sketch .sk-caption {
+  margin: 0 0 12px;
+  color: var(--ink-soft);
+  font: 700 0.875rem/1.5 var(--font-display);
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+.napkin-sketch .sk-caption b {
+  color: var(--green);
+}
+.napkin-sketch svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 75vh;
+  margin: 0 auto;
+}
+.napkin-sketch .sk-node {
+  fill: var(--surface-strong);
+  stroke: var(--green);
+  stroke-width: 1.4;
+}
+.napkin-sketch .sk-node.sk-mid {
+  fill: var(--green);
+  stroke: none;
+}
+.napkin-sketch .sk-node.sk-end {
+  fill: var(--green);
+  stroke: none;
+}
+.napkin-sketch .sk-label {
+  fill: var(--ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 12.5px;
+}
+.napkin-sketch .sk-label.sk-tmid,
+.napkin-sketch .sk-label.sk-tend {
+  fill: var(--white) !important;
+}
+.napkin-sketch .sk-line {
+  fill: none;
+  stroke: var(--green);
+  stroke-width: 1.5;
+  stroke-opacity: 0.45;
+}
+.napkin-sketch .sk-arrow {
+  fill: var(--green);
+}
+.napkin-sketch .sk-elabel {
+  fill: var(--green);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11.5px;
+  paint-order: stroke fill;
+  stroke: var(--paper);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
 @media (max-width: 640px) {
-  .napkin-sketch .sk-label { font-size: 17px !important; }
-  .napkin-sketch .sk-elabel { font-size: 15px !important; }
+  .napkin-sketch .sk-label { font-size: 13px !important; }
+  .napkin-sketch .sk-elabel { font-size: 12px !important; }
+}
+
+/* 修復子頁面 .au-infobox sticky 導致滾動時遮擋正文的 Bug */
+.subpage .au-infobox,
+#sub-author .au-infobox,
+#sub-views .au-infobox {
+  position: static !important;
+  margin: 0 0 24px 0 !important;
+  display: block !important;
+  box-shadow: none !important;
+}
+
+.subpage {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 9999 !important;
+  background: var(--paper) !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.subpage .sub-card {
+  position: relative !important;
+  max-width: 860px !important;
+  margin: 32px auto 80px !important;
+  padding: 32px 36px !important;
+  background: var(--surface) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 12px !important;
 }
 """
 
@@ -204,7 +420,7 @@ def run_zhconvert(file_path: str):
     print(f"[*] 正在調用 zhconvert 進行繁體台灣在地化轉換: {file_path}")
     cmd = [sys.executable, ZHCONVERT_PATH, file_path, "--mode", "Taiwan", "--overwrite"]
     try:
-        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        res = subprocess.run(cmd, capture_output=True, text=True, encoding='utf-8', errors='replace', check=True)
         print(f"[+] zhconvert 轉換完成。")
     except subprocess.CalledProcessError as e:
         print(f"[-] zhconvert 執行失敗: {e.stderr}")
@@ -250,9 +466,9 @@ def process_html_content(content: str) -> str:
     if '.napkin-sketch .sk-label' not in content or '17px !important' not in content:
         # 尋找 </style> 標籤前注入
         if '</style>' in content:
-            content = content.replace('</style>', f"{MOBILE_NAPKIN_CSS}\n</style>", 1)
+            content = content.replace('</style>', f"{ENHANCED_CUSTOM_CSS}\n</style>", 1)
         else:
-            content = re.sub(r'</head>', f"<style>{MOBILE_NAPKIN_CSS}</style>\n</head>", content, count=1)
+            content = re.sub(r'</head>', f"<style>{ENHANCED_CUSTOM_CSS}</style>\n</head>", content, count=1)
 
     # 5. 置換 initSketch() 函式為雙模響應式版本
     sketch_pattern = re.compile(
@@ -279,6 +495,11 @@ def process_html_content(content: str) -> str:
                 print("[!] 警告：未找到 initMindmap 標記，略過 initSketch 函式置換。")
         else:
             print("[*] 頁面未包含 initSketch 函式，略過流程圖置換。")
+
+    # 6. 將「智慧體」、「智能體」、「智能体」統一定名為 "Agent"
+    content = content.replace("智慧體", "Agent")
+    content = content.replace("智能體", "Agent")
+    content = content.replace("智能体", "Agent")
 
     return content
 
@@ -363,6 +584,14 @@ def main():
 
     # 1. 執行 zhconvert 繁體台灣化
     run_zhconvert(html_path)
+
+    # 檢查轉換後的路徑（zhconvert 可能會重命名檔名為繁體）
+    if not os.path.exists(html_path):
+        dir_name = os.path.dirname(html_path)
+        candidates = [os.path.join(dir_name, f) for f in os.listdir(dir_name) if f.endswith('.html') and not f.endswith('-mobile.html')]
+        if candidates:
+            html_path = max(candidates, key=os.path.getmtime)
+            print(f"[*] 檢測到 zhconvert 已將檔名轉為繁體，當前路徑更新為: {html_path}")
 
     # 2. 讀取並處理 HTML 內容
     with open(html_path, 'r', encoding='utf-8') as f:
