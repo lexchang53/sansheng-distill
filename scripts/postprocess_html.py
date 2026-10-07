@@ -495,12 +495,6 @@ def process_html_content(content: str) -> str:
                 print("[!] 警告：未找到 initMindmap 標記，略過 initSketch 函式置換。")
         else:
             print("[*] 頁面未包含 initSketch 函式，略過流程圖置換。")
-
-    # 6. 將「智慧體」、「智能體」、「智能体」統一定名為 "Agent"
-    content = content.replace("智慧體", "Agent")
-    content = content.replace("智能體", "Agent")
-    content = content.replace("智能体", "Agent")
-
     return content
 
 def resolve_target_filename(html_path: str, distill_path: str = None) -> str:
