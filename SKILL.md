@@ -1,6 +1,6 @@
 ---
-name: sansheng-distill
-description: 将书籍、单集或系列视频、创作者作品、人物生平或人物专题蒸馏成有来源的可读资料；也处理已蒸书库的作者、问题专题与类别聚合。企业研究交给企业研究能力，本 Skill 承接其中的书籍/人物资料子任务。只要字幕摘要、普通单篇文章或页面工程时不触发。或當使用者要求「更新/升級 sansheng-distill 技能」時（此時必須先閱讀 UPSTREAM_MAINTENANCE.md 執行標準升級流程）。觸發詞：蒸餾這本書、拆書、蒸餾影片、影片系列蒸餾、更新sansheng-distill、升級sansheng-distill、升級蒸餾技能。
+name: deep-distill-tw
+description: 将书籍、单集或系列视频、创作者作品、人物生平或人物专题蒸馏成有来源的可读资料；也处理已蒸书库的作者、问题专题与类别聚合。企业研究交给企业研究能力，本 Skill 承接其中的书籍/人物资料子任务。只要字幕摘要、普通单篇文章或页面工程时不触发。或當使用者要求「更新/升級 deep-distill-tw 技能」時（此時必須先閱讀 UPSTREAM_MAINTENANCE.md 執行標準升級流程）。觸發詞：蒸餾這本書、拆書、蒸餾影片、影片系列蒸餾、更新deep-distill-tw、升級deep-distill-tw、升級蒸餾技能。
 ---
 
 # 蒸馏：识别对象，按需加载，复用已有成果

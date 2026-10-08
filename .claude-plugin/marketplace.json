@@ -1,13 +1,13 @@
 {
-  "name": "sansheng-distill-marketplace",
-  "description": "叁笙's auditable distillation skill for books, media, creators, and biographies.",
+  "name": "deep-distill-tw-marketplace",
+  "description": "Auditable distillation skill for books, media, creators, and biographies (Traditional Chinese Taiwan Enhanced Edition).",
   "owner": {
-    "name": "叁笙 (sansheng)",
-    "email": "sandypoli@gmail.com"
+    "name": "lexchang53",
+    "email": ""
   },
   "plugins": [
     {
-      "name": "sansheng-distill",
+      "name": "deep-distill-tw",
       "description": "Distill books, video series, creator corpora, and evidence-backed biographies into auditable outputs.",
       "version": "0.11.0",
       "source": "./",

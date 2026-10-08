@@ -1,7 +1,7 @@
-# sansheng-distill 繁體在地化版本 · 上游升級維護手冊 (Upstream Upgrade Guide)
+# deep-distill-tw 繁體在地化版本 · 上游升級維護手冊 (Upstream Upgrade Guide)
 
 > **給 AI 輔助開發者的指示 (Instructions for AI Assistants)**：
-> 當使用者要求「升級 sansheng-distill 到官方最新版」時，**請嚴格依據本文件執行**。
+> 當使用者要求「升級 deep-distill-tw 到官方最新版」時，**請嚴格依據本文件執行**。
 > 本專案採用「**原生上游核心 + 產物自動後處理繁體化**」架構，**嚴禁**對全庫所有檔案進行批次簡轉繁，**只需維護以下 4 個核心檔案的補丁與外掛**。
 
 ---
@@ -61,7 +61,7 @@ CH_PAT = re.compile(
 
 #### 2. 檢查 `SKILL.md` 與 `references/pipeline-*.md`（Step7 自動後處理規範）
 確保包含以下自動繁體化後處理指令與鐵律說明：
-- **`SKILL.md` description**：包含 `或當使用者要求「更新/升級 sansheng-distill 技能」時...` 觸發指示。
+- **`SKILL.md` description**：包含 `或當使用者要求「更新/升級 deep-distill-tw 技能」時...` 觸發指示。
 - **`references/pipeline-steps.md` 表格 Step7 指令**：
   > 驗證 exit 0 後**自動執行**：`python "$SKILL/scripts/postprocess_html.py" "$DATA/{書目錄}/{slug}.html" --distill "$DATA/{書目錄}/distill.json"`，確保全文字繁體化、`<html lang="zh-Hant-TW">`、注入手機版 17px 樣式、因果流程圖雙模響應式切換，並自動重命名為繁體中文書名及清理過渡檔案。
 - **`references/pipeline-rules.md` 下方鐵律 (Iron Law)**：
@@ -82,7 +82,7 @@ git push origin main
 ### 第四步：自動雲端備份至 P 磁碟 (Auto-Backup to P Drive)
 提交並推送到 GitHub 後，**必須自動調用 skills-sync** 進行本機至 P 磁碟的鏡像同步，確保多台電腦無縫銜接：
 ```powershell
-powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.gemini\config\skills\skills-sync\sync-skills.ps1" -Mode Backup -SkillName "sansheng-distill"
+powershell -ExecutionPolicy Bypass -File "$env:USERPROFILE\.gemini\config\skills\skills-sync\sync-skills.ps1" -Mode Backup -SkillName "deep-distill-tw"
 ```
 *(升級流程至此全流程閉環完畢)*
 

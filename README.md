@@ -1,4 +1,4 @@
-# sansheng-distill · 書籍、影片與人物資料深度蒸餾引擎（繁體台灣在地化增強版）
+# deep-distill-tw · 書籍、影片與人物資料深度蒸餾引擎（繁體台灣在地化增強版）
 
 > 將一本書或一組影片淬煉成可互動瀏覽的單檔案知識地圖；亦可將歷史人物生平整理為可追溯的證據資料庫。
 
@@ -63,16 +63,16 @@
 
 **Windows (PowerShell):**
 ```powershell
-git clone https://github.com/lexchang53/sansheng-distill.git "$HOME\.gemini\config\skills\sansheng-distill"
+git clone https://github.com/lexchang53/deep-distill-tw.git "$HOME\.gemini\config\skills\deep-distill-tw"
 # 若使用 Claude Code:
-# git clone https://github.com/lexchang53/sansheng-distill.git "$HOME\.claude\skills\sansheng-distill"
+# git clone https://github.com/lexchang53/deep-distill-tw.git "$HOME\.claude\skills\deep-distill-tw"
 ```
 
 **macOS / Linux:**
 ```bash
-git clone https://github.com/lexchang53/sansheng-distill.git ~/.gemini/config/skills/sansheng-distill
+git clone https://github.com/lexchang53/deep-distill-tw.git ~/.gemini/config/skills/deep-distill-tw
 # 若使用 Claude Code:
-# git clone https://github.com/lexchang53/sansheng-distill.git ~/.claude/skills/sansheng-distill
+# git clone https://github.com/lexchang53/deep-distill-tw.git ~/.claude/skills/deep-distill-tw
 ```
 
 ### 2. 安裝 Python 依賴
